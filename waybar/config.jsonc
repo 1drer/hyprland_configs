@@ -1,0 +1,147 @@
+{
+  "layer": "top",
+  "position": "top", 
+  "height": 32,
+  "margin": "4 4 0 4",
+  "fixed-center": true,
+
+  "modules-left": [
+    "hyprland/workspaces",
+    "hyprland/window"
+  ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "tray",
+    "pulseaudio",
+    "group/system"
+
+  ],
+
+  // ── Left ─────────────────────────────────────────────
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "persistent-workspaces": { "*": 5},
+    "sort-by-number": true,
+  },
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 28,
+    "separate-outputs": true,
+    "rewrite": {
+      //"(.*)Code - OSS": "󰨞 $1",
+      //"(.*)kitty": " $1",
+      //"(.*)nvim": " $1"
+    }
+  },
+
+  "niri/workspaces": {
+  "format": "{value}",
+  "all-outputs": false
+},
+"niri/window": {
+  "format": "{title}",
+  "separate-outputs": true,
+  "rewrite": {
+    "(.*)VScodium": "󰨞 $1"
+  }
+},
+
+  // ── Center ───────────────────────────────────────────
+
+  "clock": {
+    "format": "{:%b %d  %H:%M}",
+    "format-alt": "{:%A, %B %d %Y}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "format": {
+        "today": "<span color='#a6e3a1'><b>{}</b></span>"
+      }
+    }
+  },
+
+  // ── Right ────────────────────────────────────────────
+ "tray": {
+    "icon-size": 18,
+    "spacing": 8
+},
+
+  "pulseaudio": {
+     "scroll-step": 5,
+    "format": "{volume}%",
+    "format-muted": "Muted",
+    "on-click": "pavucontrol",
+    "format-icons": {
+      "default": ["󰕿", "󰖀", "󰕾"],
+      "headphones": "󰋋",
+      "headset": "󰋎"
+    },
+    "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+    "tooltip": false
+  },
+
+  "group/system": {
+    "orientation": "horizontal",
+    "modules": [
+      "network",
+      "bluetooth",
+      "power-profiles-daemon",
+      "battery"
+    ]
+  },
+
+"bluetooth": {
+    "format":                "BT",
+    "format-off":            "Off",
+    "format-disabled":       "BT",
+    "format-connected":      "BT: {num_connections}",
+    //"format-connected": "󰂱 {device_alias} {device_battery_percentage}%",
+    "tooltip-format":                    "{controller_alias}\t{controller_address}",
+    "tooltip-format-disabled":           "Bluetooth: Disabled",
+    "tooltip-format-off":                "Bluetooth: Off",
+    "tooltip-format-connected":          "{controller_alias}\t{controller_address}\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_battery_percentage}%",
+    //"on-click": "~/.config/rofi/scrripts/rofi-bluetooth-menu.sh",
+    //"on-click": "blueman-manager",
+    "on-click-right": "bluetoothctl show | grep -q 'Powered: yes' && bluetoothctl power off || bluetoothctl power on",
+    "on-click": "kitty --class bluetui -e bluetui"
+},
+
+  "network": {
+    "format-wifi":         " {signalStrength}%",
+    "format-ethernet":     "{ifname}",
+    "format-disconnected": "",
+    "format-disabled":     "Off",
+    "tooltip-format-wifi":        "{essid}\n󰇚 {bandwidthDownBits}   󰕒 {bandwidthUpBits}",
+    "tooltip-format-ethernet":    "{ifname}\n󰇚 {bandwidthDownBits}   󰕒 {bandwidthUpBits}",
+    "tooltip-format-disconnected":"Not Connected",
+    "tooltip-format-disabled": "Network Disabled",
+    "on-click": "~/.config/rofi/scripts/rofi-wifi-menu.sh",
+    "on-click-right": "nmcli radio wifi | grep -q enabled && nmcli radio wifi off || nmcli radio wifi on",
+    "interval": 5
+  },
+
+  "power-profiles-daemon": {
+    "format": "{icon}",
+    "tooltip": false,
+    "tooltip-format": "Profile: {profile}",
+    "format-icons": {
+      "default":     "Steady",
+      "performance": "Stride",
+      "balanced":    "Steady",
+      "power-saver": "Stealth"
+    }
+  },
+
+  "battery": {
+    "format": "{capacity}% ",
+      "states": {
+      "warning":  30,
+      "critical": 10
+    },
+    "tooltip-format": "{timeTo}\nHealth: {health}%"
+  }
+}
