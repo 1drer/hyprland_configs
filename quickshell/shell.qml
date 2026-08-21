@@ -12,5 +12,6 @@
 import Quickshell
 
 ShellRoot {
-    WallpaperPicker {}
+  WallpaperPicker {}
+  Bar {}
 }
