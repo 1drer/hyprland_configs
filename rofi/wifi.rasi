@@ -1,0 +1,105 @@
+/* wifi.rasi — Catppuccin Mocha, 0 roundness */
+
+* {
+    /* Catppuccin Mocha palette */
+    base:     #1e1e2eff;
+    mantle:   #181825ff;
+    surface0: #313244ff;
+    surface1: #45475aff;
+    text:     #cdd6f4ff;
+    subtext:  #a6adc8ff;
+    lavender: #b4befeff;
+    green:    #a6e3a1ff;
+    red:      #f38ba8ff;
+
+    background-color: transparent;
+    text-color:       @text;
+    font:             "JetBrainsMono Nerd Font 12";
+
+    border-radius: 0px;
+}
+
+window {
+    background-color: @base;
+    border:            2px;
+    border-color:       @lavender;
+    border-radius:      0px;
+    width:               420px;
+    location:            center;
+    anchor:              center;
+    padding:             0px;
+}
+
+mainbox {
+    background-color: transparent;
+    border-radius:     0px;
+    padding:            10px;
+    spacing:             10px;
+}
+
+inputbar {
+    background-color: @surface0;
+    text-color:         @text;
+    border-radius:       0px;
+    padding:              8px 12px;
+    spacing:               8px;
+    children:               ["prompt", "entry"];
+}
+
+prompt {
+    background-color: transparent;
+    text-color:         @lavender;
+    border-radius:       0px;
+}
+
+entry {
+    background-color: transparent;
+    text-color:         @text;
+    placeholder-color:   @subtext;
+    placeholder:         "Search networks...";
+    border-radius:       0px;
+}
+
+listview {
+    background-color: transparent;
+    border-radius:     0px;
+    lines:               10;
+    spacing:             4px;
+    scrollbar:            false;
+    fixed-height:         false;
+}
+
+element {
+    background-color: transparent;
+    text-color:         @text;
+    border-radius:       0px;
+    padding:              8px 12px;
+    spacing:               8px;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color:         @text;
+}
+
+element selected.normal {
+    background-color: @surface1;
+    text-color:         @lavender;
+    border:              0px 0px 0px 3px;
+    border-color:         @lavender;
+    border-radius:        0px;
+}
+
+element-text {
+    background-color: transparent;
+    text-color:         inherit;
+    vertical-align:      0.5;
+    border-radius:       0px;
+}
+
+error-message {
+    background-color: @base;
+    text-color:         @red;
+    border-radius:       0px;
+    padding:              10px;
+}

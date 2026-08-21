@@ -1,0 +1,98 @@
+/**
+ * Catppuccin Mocha — rofi power menu
+ * Matches themes/catppuccin-mocha.rasi, but fixed-size (no inputbar)
+ * Place at: ~/.config/rofi/power-menu.rasi
+ */
+
+* {
+    /* ── Catppuccin Mocha palette ── */
+    base:     #1e1e2e;
+    mantle:   #181825;
+    crust:    #11111b;
+    surface0: #313244;
+    surface1: #45475a;
+    surface2: #585b70;
+    overlay0: #6c7086;
+    overlay1: #7f849c;
+    overlay2: #9399b2;
+    subtext0: #a6adc8;
+    subtext1: #bac2de;
+    text:     #cdd6f4;
+
+    /* accents */
+    lavender: #b4befe;
+    mauve:    #cba6f7;
+    red:      #f38ba8;
+
+    /* ── Wiring ── */
+    font:             "JetBrainsMono Nerd Font 13";
+    background-color: transparent;
+    text-color:       @text;
+    margin:           0px;
+    padding:          0px;
+    spacing:          0px;
+}
+
+/* ===== Window ===== */
+window {
+    location:         center;
+    width:            240px;
+    border-radius:    0px;
+    border:           2px solid;
+    border-color:     @lavender;
+    background-color: @base;
+}
+
+/* ===== Main container (no inputbar — fixed list only) ===== */
+mainbox {
+    children:         [ "listview" ];
+    padding:          8px 0px;
+    background-color: @base;
+}
+
+/* ===== List ===== */
+listview {
+    background-color: @base;
+    padding:          0px;
+    margin:           0px;
+    columns:          1;
+    lines:            6;
+    fixed-height:     false;
+    scrollbar:        false;
+}
+
+/* ===== Elements ===== */
+element {
+    padding:          9px 12px;
+    spacing:          10px;
+    margin:           0px 8px;
+    cursor:           pointer;
+}
+
+element normal.normal {
+    background-color: @base;
+}
+
+element alternate.normal {
+    background-color: @mantle;
+}
+
+element selected.normal {
+    background-color: @surface0;
+    text-color:       @lavender;
+}
+
+/* ===== Icons & text ===== */
+element-icon {
+    size:             1.1em;
+    vertical-align:   0.5;
+    background-color: transparent;
+    cursor:           pointer;
+}
+
+element-text {
+    text-color:       inherit;
+    background-color: transparent;
+    vertical-align:   0.5;
+    cursor:           pointer;
+}

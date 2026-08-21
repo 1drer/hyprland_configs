@@ -1,0 +1,96 @@
+/* Catppuccin Mocha rofi theme — wifi-menu.rasi */
+
+* {
+    base:     #1e1e2eff;
+    mantle:   #181825ff;
+    surface0: #313244ff;
+    surface1: #45475aff;
+    text:     #cdd6f4ff;
+    subtext:  #a6adc8ff;
+    blue:     #89b4faff;
+    green:    #a6e3a1ff;
+    lavender: #b4befeff;
+    red:      #f38ba8ff;
+
+    background-color: transparent;
+    text-color:       @text;
+    font:             "JetBrainsMono Nerd Font 11";
+}
+
+window {
+    background-color: @base;
+    border:           2px;
+    border-color:     @lavender;
+    border-radius:    14px;
+    width:            360px;
+    padding:          8px;
+    location:         center;
+    anchor:           center;
+}
+
+mainbox {
+    background-color: transparent;
+    children: [ "inputbar", "listview" ];
+    spacing: 10px;
+    padding: 6px;
+}
+
+inputbar {
+    background-color: @surface0;
+    text-color:        @text;
+    border-radius:      10px;
+    padding:            10px 12px;
+    spacing:             8px;
+    children: [ "prompt", "entry" ];
+}
+
+prompt {
+    text-color:  @lavender;
+    font:        "JetBrainsMono Nerd Font Bold 11";
+}
+
+entry {
+    placeholder:       "Search networks…";
+    placeholder-color: @subtext;
+    text-color:        @text;
+}
+
+listview {
+    background-color: transparent;
+    lines:              8;
+    scrollbar:          false;
+    spacing:             4px;
+    padding:             2px 0px;
+    fixed-height:       false;
+}
+
+element {
+    background-color: transparent;
+    text-color:        @text;
+    border-radius:      10px;
+    padding:            9px 12px;
+    orientation:        horizontal;
+    spacing:             10px;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color:        @text;
+}
+
+element selected.normal {
+    background-color: @surface0;
+    text-color:        @green;
+    border:            0px 0px 0px 3px;
+    border-color:      @green;
+}
+
+element-text {
+    background-color: transparent;
+    text-color:        inherit;
+    vertical-align:     0.5;
+}
+
+element-icon {
+    size: 0px;
+}
