@@ -85,7 +85,8 @@ Scope {
 
         property real selectedGrow: 1.25
 
-        property int cardSpacing: 250
+        // More breathing room between cards.
+        property int cardSpacing: 285
 
         property int borderIdle: 1
         property int borderCurrent: 2
@@ -94,6 +95,10 @@ Scope {
         // 3 cards on each side:
         // 3 + selected + 3 = 7
         property int visibleRadius: 3
+
+        // Carousel animation.
+        property int animationDuration: 280
+        property int opacityDuration: 220
     }
 
 
@@ -184,12 +189,10 @@ Scope {
     }
 
 
-    // Throttles rapid-fire navigation (holding a nav key) so a new step
-    // never starts before the previous card animation has mostly settled
-    // — without this, held keys outrun the animation and cards visibly
-    // overlap mid-transition.
+    // Slightly slower throttle so held navigation keys don't
+    // outrun the carousel animation.
     property real _lastMoveTime: 0
-    readonly property int navThrottleMs: 40
+    readonly property int navThrottleMs: 90
 
     function moveSelection(delta) {
         const now = Date.now();
@@ -554,10 +557,8 @@ Scope {
                     !root.pathEditorActive &&
                     !root.fullscreenActive &&
                     root.hasWallpapers &&
-                    // The search input handles its own Enter (moves focus
-                    // to the cards) — this shortcut must stay off while
-                    // it has focus, or both would fire on the same press.
-                    !(root.searchActive && root.searchFocusTarget === "input")
+                    !(root.searchActive &&
+                      root.searchFocusTarget === "input")
 
                 onActivated: {
                     root.confirmSelection();
@@ -693,8 +694,7 @@ Scope {
                     readonly property real centerX: width / 2
                     readonly property real centerY: height / 2
 
-                    // Cards read as "out of focus" while typing in search —
-                    // full opacity again once focus moves to the list.
+                    // Cards become slightly subdued while typing.
                     opacity:
                         root.searchActive &&
                         root.searchFocusTarget === "input"
@@ -796,35 +796,50 @@ Scope {
                             readonly property real growH:
                                 baseH * root.theme.selectedGrow
 
+                            readonly property real cardW:
+                                isSelected ? growW : baseW
+
+                            readonly property real cardH:
+                                isSelected ? growH : baseH
+
                             readonly property real shelfY:
                                 filmstrip.centerY + baseH / 2
 
 
-                            width:
-                                isSelected
-                                    ? growW
-                                    : baseW
+                            // ──────────────────────────────────────────
+                            // Position
+                            //
+                            // IMPORTANT:
+                            //
+                            // The selected card's center is ALWAYS
+                            // filmstrip.centerX.
+                            //
+                            // The cards around it move relative to this
+                            // fixed center.
+                            // ──────────────────────────────────────────
 
-                            height:
-                                isSelected
-                                    ? growH
-                                    : baseH
+                            width: cardW
+                            height: cardH
 
                             x:
                                 filmstrip.centerX -
-                                width / 2 +
+                                cardW / 2 +
                                 offset *
                                 root.theme.cardSpacing
 
                             y:
-                                shelfY - height
+                                shelfY - cardH
+
 
                             visible: nearby
 
+
+                            // Selected card is always on top.
                             z:
                                 1000 -
                                 Math.abs(offset) +
                                 (isSelected ? 500 : 0)
+
 
                             opacity:
                                 nearby
@@ -841,33 +856,50 @@ Scope {
                                     : 0.0
 
 
-                            // ─────────────────── Animation ─────────────
+                            // ══════════════════════════════════════════
+                            // Smooth Animation
+                            // ══════════════════════════════════════════
 
                             Behavior on x {
                                 NumberAnimation {
-                                    duration: 120
-                                    easing.type: Easing.OutCubic
+                                    duration:
+                                        root.theme.animationDuration
+
+                                    easing.type:
+                                        Easing.OutCubic
                                 }
                             }
+
 
                             Behavior on width {
                                 NumberAnimation {
-                                    duration: 120
-                                    easing.type: Easing.OutCubic
+                                    duration:
+                                        root.theme.animationDuration
+
+                                    easing.type:
+                                        Easing.OutCubic
                                 }
                             }
+
 
                             Behavior on height {
                                 NumberAnimation {
-                                    duration: 120
-                                    easing.type: Easing.OutCubic
+                                    duration:
+                                        root.theme.animationDuration
+
+                                    easing.type:
+                                        Easing.OutCubic
                                 }
                             }
 
+
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: 110
-                                    easing.type: Easing.OutCubic
+                                    duration:
+                                        root.theme.opacityDuration
+
+                                    easing.type:
+                                        Easing.OutCubic
                                 }
                             }
 
@@ -887,7 +919,9 @@ Scope {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: root.theme.surface0
+
+                                    color:
+                                        root.theme.surface0
                                 }
 
 
@@ -900,7 +934,8 @@ Scope {
 
                                     source:
                                         card.nearby
-                                            ? "file://" + card.modelData
+                                            ? "file://" +
+                                              card.modelData
                                             : ""
 
                                     fillMode:
@@ -925,7 +960,8 @@ Scope {
                                             thumb.status !==
                                             Image.Ready
 
-                                        color: root.theme.crust
+                                        color:
+                                            root.theme.crust
                                     }
                                 }
 
@@ -935,7 +971,8 @@ Scope {
                                 Rectangle {
                                     anchors.fill: parent
 
-                                    color: root.theme.crust
+                                    color:
+                                        root.theme.crust
 
                                     opacity:
                                         card.isSelected
@@ -1058,8 +1095,6 @@ Scope {
 
                                 case Qt.Key_Return:
                                 case Qt.Key_Enter:
-                                    // Hand focus to the cards rather than
-                                    // confirming immediately — matches Down.
                                     root.searchFocusTarget = "list";
                                     event.accepted = true;
                                     break;
@@ -1135,7 +1170,9 @@ Scope {
 
                             clip: true
 
-                            focus: root.pathEditorActive
+                            focus:
+                                root.pathEditorActive
+
                             cursorVisible: activeFocus
                             selectByMouse: true
 
