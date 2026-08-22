@@ -4,7 +4,7 @@ import Quickshell.Io
 import "./theme"
 
 ShellRoot {
-    IpcHandler {
+  IpcHandler {
     target: "theme"
     function set(name: string): void {
         ThemeManager.setTheme(name)
@@ -15,8 +15,8 @@ ShellRoot {
     function next(): void {
         ThemeManager.nextTheme()
     }
-}
+} 
     WallpaperPicker {}
     Bar {}
-   // ThemeSwitcher {}
+    ThemeSwitcher {}
 }
