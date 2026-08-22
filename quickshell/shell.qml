@@ -1,17 +1,22 @@
-// shell.qml
-//
-// Minimal Quickshell entry point that just loads the wallpaper picker.
-//
-// Place this file next to WallpaperPicker.qml in:
-//   ~/.config/quickshell/shell.qml
-//   ~/.config/quickshell/WallpaperPicker.qml
-//
-// Run with:      quickshell
-// Toggle with:   qs ipc call wallpaper toggle
-
 import Quickshell
+import Quickshell.Io
+
+import "./theme"
 
 ShellRoot {
-  WallpaperPicker {}
-  Bar {}
+    IpcHandler {
+    target: "theme"
+    function set(name: string): void {
+        ThemeManager.setTheme(name)
+    }
+    function toggle(): void {
+        ThemeManager.toggleSwitcher()
+    }
+    function next(): void {
+        ThemeManager.nextTheme()
+    }
+}
+    WallpaperPicker {}
+    Bar {}
+   // ThemeSwitcher {}
 }
