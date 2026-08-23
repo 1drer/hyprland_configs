@@ -19,8 +19,8 @@
     progress_bar_corner_radius = 4
 
     # THEME_GLOBAL_BEGIN
-    highlight = "#b4befe"
-    frame_color = "#b4befe"
+    highlight = "#d3869b"
+    frame_color = "#d3869b"
 # THEME_GLOBAL_END
 
     ### Appearance ###
@@ -89,9 +89,9 @@
 [urgency_low]
 
     # THEME_LOW_BEGIN
-    background = "#1e1e2e"
-    foreground = "#a6adc8"
-    frame_color = "#a6e3a1"
+    background = "#282828"
+    foreground = "#bdae93"
+    frame_color = "#b8bb26"
 # THEME_LOW_END
 
     timeout = 2
@@ -101,9 +101,9 @@
 [urgency_normal]
 
     # THEME_NORMAL_BEGIN
-    background = "#1e1e2e"
-    foreground = "#cdd6f4"
-    frame_color = "#b4befe"
+    background = "#282828"
+    foreground = "#ebdbb2"
+    frame_color = "#d3869b"
 # THEME_NORMAL_END
 
     timeout = 4
@@ -114,10 +114,10 @@
 [urgency_critical]
 
     # THEME_CRITICAL_BEGIN
-    background = "#1e1e2e"
-    foreground = "#cdd6f4"
-    frame_color = "#f38ba8"
-    highlight = "#f38ba8"
+    background = "#282828"
+    foreground = "#ebdbb2"
+    frame_color = "#fb4934"
+    highlight = "#fb4934"
 # THEME_CRITICAL_END
 
     timeout = 0
@@ -131,8 +131,8 @@
     appname = Spotify
 
     # THEME_SPOTIFY_BEGIN
-    frame_color = "#a6e3a1"
-    highlight = "#a6e3a1"
+    frame_color = "#b8bb26"
+    highlight = "#b8bb26"
 # THEME_SPOTIFY_END
 
     timeout = 4
@@ -142,7 +142,7 @@
     appname = discord
 
     # THEME_DISCORD_BEGIN
-    frame_color = "#89b4fa"
+    frame_color = "#83a598"
 # THEME_DISCORD_END
 
     timeout = 5
@@ -152,8 +152,8 @@
     summary = "Volume*"
 
     # THEME_VOLUME_BEGIN
-    frame_color = "#b4befe"
-    highlight = "#b4befe"
+    frame_color = "#d3869b"
+    highlight = "#d3869b"
 # THEME_VOLUME_END
 
     timeout = 2
@@ -164,8 +164,8 @@
     summary = "Brightness*"
 
     # THEME_BRIGHTNESS_BEGIN
-    frame_color = "#f9e2af"
-    highlight = "#f9e2af"
+    frame_color = "#fabd2f"
+    highlight = "#fabd2f"
 # THEME_BRIGHTNESS_END
 
     timeout = 2

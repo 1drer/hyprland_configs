@@ -10,43 +10,43 @@
      * Backgrounds
      * ═════════════════════════════════════════════ */
 
-    background:          #1e1e2e;
-    backgroundSecondary: #181825;
-    backgroundDeep:      #11111b;
+    background:          #282828;
+    backgroundSecondary: #1d2021;
+    backgroundDeep:      #1d2021;
 
     /* ═════════════════════════════════════════════
      * Surfaces
      * ═════════════════════════════════════════════ */
 
-    surface:             #313244;
-    surfaceSecondary:    #45475a;
-    surfaceTertiary:     #585b70;
+    surface:             #3c3836;
+    surfaceSecondary:    #504945;
+    surfaceTertiary:     #665c54;
 
     /* ═════════════════════════════════════════════
      * Overlays
      * ═════════════════════════════════════════════ */
 
-    overlay:             #6c7086;
-    overlaySecondary:    #7f849c;
-    overlayTertiary:     #9399b2;
+    overlay:             #7c6f64;
+    overlaySecondary:    #928374;
+    overlayTertiary:     #a89984;
 
     /* ═════════════════════════════════════════════
      * Text
      * ═════════════════════════════════════════════ */
 
-    text:                #cdd6f4;
-    textSecondary:       #bac2de;
-    textMuted:           #a6adc8;
+    text:                #ebdbb2;
+    textSecondary:       #d5c4a1;
+    textMuted:           #bdae93;
 
     /* ═════════════════════════════════════════════
      * Semantic accents
      * ═════════════════════════════════════════════ */
 
-    accent:              #b4befe;
-    accentSecondary:     #cba6f7;
+    accent:              #d3869b;
+    accentSecondary:     #b16286;
 
-    success:             #a6e3a1;
-    warning:             #f9e2af;
-    danger:              #f38ba8;
-    info:                #89b4fa;
+    success:             #b8bb26;
+    warning:             #fabd2f;
+    danger:              #fb4934;
+    info:                #83a598;
 }
