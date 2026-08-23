@@ -17,7 +17,11 @@
     progress_bar_min_width = 150
     progress_bar_max_width = 300
     progress_bar_corner_radius = 4
-    highlight = "#cba6f7"
+
+    # THEME_GLOBAL_BEGIN
+    highlight = "#d3869b"
+    frame_color = "#d3869b"
+# THEME_GLOBAL_END
 
     ### Appearance ###
     transparency = 0
@@ -26,7 +30,6 @@
     horizontal_padding = 14
     text_icon_padding = 12
     frame_width = 2
-    frame_color = "#cba6f7"
     gap_size = 6
     separator_color = frame
     sort = yes
@@ -52,7 +55,7 @@
 
     ### Icons ###
     enable_recursive_icon_lookup = true
-   ## icon_theme = Papirus-Dark##
+    ## icon_theme = Papirus-Dark##
     icon_position = left
     min_icon_size = 32
     max_icon_size = 48
@@ -84,52 +87,86 @@
 
 
 [urgency_low]
-    background = "#1e1e2e"
-    foreground = "#a6adc8"
-    frame_color = "#a6e3a1"
+
+    # THEME_LOW_BEGIN
+    background = "#282828"
+    foreground = "#bdae93"
+    frame_color = "#b8bb26"
+# THEME_LOW_END
+
     timeout = 2
     #default_icon = dialog-information
 
+
 [urgency_normal]
-    background = "#1e1e2e"
-    foreground = "#cdd6f4"
-    frame_color = "#b4befe"
+
+    # THEME_NORMAL_BEGIN
+    background = "#282828"
+    foreground = "#ebdbb2"
+    frame_color = "#d3869b"
+# THEME_NORMAL_END
+
     timeout = 4
     override_pause_level = 30
     #default_icon = dialog-information
 
+
 [urgency_critical]
-    background = "#1e1e2e"
-    foreground = "#cdd6f4"
-    frame_color = "#f38ba8"
-    highlight = "#f38ba8"
+
+    # THEME_CRITICAL_BEGIN
+    background = "#282828"
+    foreground = "#ebdbb2"
+    frame_color = "#fb4934"
+    highlight = "#fb4934"
+# THEME_CRITICAL_END
+
     timeout = 0
     override_pause_level = 60
     #default_icon = dialog-error
+
 
 ### App-specific rules ###
 
 [spotify]
     appname = Spotify
-    frame_color = "#a6e3a1"
-    highlight = "#a6e3a1"
+
+    # THEME_SPOTIFY_BEGIN
+    frame_color = "#b8bb26"
+    highlight = "#b8bb26"
+# THEME_SPOTIFY_END
+
     timeout = 4
+
 
 [discord]
     appname = discord
-    frame_color = "#89b4fa"
+
+    # THEME_DISCORD_BEGIN
+    frame_color = "#83a598"
+# THEME_DISCORD_END
+
     timeout = 5
+
 
 [volume]
     summary = "Volume*"
-    frame_color = "#89dceb"
-    highlight = "#89dceb"
+
+    # THEME_VOLUME_BEGIN
+    frame_color = "#d3869b"
+    highlight = "#d3869b"
+# THEME_VOLUME_END
+
     timeout = 2
     script = "/home/enryu/.config/dunst/sounds/silent.sh"
 
+
 [brightness]
     summary = "Brightness*"
-    frame_color = "#f9e2af"
-    highlight = "#f9e2af"
+
+    # THEME_BRIGHTNESS_BEGIN
+    frame_color = "#fabd2f"
+    highlight = "#fabd2f"
+# THEME_BRIGHTNESS_END
+
     timeout = 2
     script = "/home/enryu/.config/dunst/sounds/silent.sh"

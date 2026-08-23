@@ -1,0 +1,25 @@
+{
+  "label": "Chalk",
+  "aliases": ["chalk"],
+  "colors": {
+    "background": "#161616",
+    "backgroundSecondary": "#0d0d0d",
+    "backgroundDeep": "#050505",
+    "surface": "#1f1f1f",
+    "surfaceSecondary": "#2c2c2c",
+    "surfaceTertiary": "#3a3a3a",
+    "overlay": "#5c5c5c",
+    "overlaySecondary": "#787878",
+    "overlayTertiary": "#969696",
+    "text": "#f0f0f0",
+    "textSecondary": "#d4d4d4",
+    "textMuted": "#a8a8a8",
+    "accent": "#ffffff",
+    "accentSecondary": "#e8e8e8",
+    "success": "#e0e0e0",
+    "warning": "#c8c8c8",
+    "danger": "#ffffff",
+    "info": "#b0b0b0"
+  },
+  "semantic": {}
+}

@@ -1,105 +1,193 @@
-/* wifi.rasi — Catppuccin Mocha, 0 roundness */
+/**
+ * Rofi WiFi Menu
+ * Uses the same palette as the main Rofi config
+ */
+
+@import "~/.config/rofi/colors.rasi"
 
 * {
-    /* Catppuccin Mocha palette */
-    base:     #1e1e2eff;
-    mantle:   #181825ff;
-    surface0: #313244ff;
-    surface1: #45475aff;
-    text:     #cdd6f4ff;
-    subtext:  #a6adc8ff;
-    lavender: #b4befeff;
-    green:    #a6e3a1ff;
-    red:      #f38ba8ff;
+    font:             "JetBrainsMono Nerd Font 12";
 
     background-color: transparent;
     text-color:       @text;
-    font:             "JetBrainsMono Nerd Font 12";
 
-    border-radius: 0px;
+    margin:           0px;
+    padding:          0px;
+    spacing:          0px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Window
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 window {
-    background-color: @base;
-    border:            2px;
-    border-color:       @lavender;
-    border-radius:      0px;
-    width:               420px;
-    location:            center;
-    anchor:              center;
-    padding:             0px;
+    location:         center;
+    anchor:           center;
+
+    width:            420px;
+
+    border:           2px;
+    border-color:     @accent;
+    border-radius:    0px;
+
+    background-color: @background;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Main container
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 mainbox {
-    background-color: transparent;
-    border-radius:     0px;
-    padding:            10px;
-    spacing:             10px;
+    padding:          10px;
+    spacing:          10px;
+
+    background-color: @background;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Input bar
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
 inputbar {
-    background-color: @surface0;
-    text-color:         @text;
-    border-radius:       0px;
-    padding:              8px 12px;
-    spacing:               8px;
-    children:               ["prompt", "entry"];
+    padding:          8px 12px;
+    spacing:          8px;
+
+    background-color: @surface;
+
+    border-radius:    0px;
+
+    children:         [ prompt, entry ];
 }
+
+
+/* Prompt */
 
 prompt {
     background-color: transparent;
-    text-color:         @lavender;
-    border-radius:       0px;
+    text-color:       @accent;
 }
+
+
+/* Entry */
 
 entry {
     background-color: transparent;
-    text-color:         @text;
-    placeholder-color:   @subtext;
-    placeholder:         "Search networks...";
-    border-radius:       0px;
+
+    text-color:       @text;
+
+    placeholder:      "Search networks...";
+    placeholder-color: @textMuted;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * List
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 listview {
     background-color: transparent;
-    border-radius:     0px;
-    lines:               10;
-    spacing:             4px;
-    scrollbar:            false;
-    fixed-height:         false;
+
+    lines:            10;
+    spacing:          4px;
+
+    scrollbar:        false;
+    fixed-height:     false;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Elements
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
 element {
+    padding:          8px 12px;
+    spacing:          8px;
+
     background-color: transparent;
-    text-color:         @text;
-    border-radius:       0px;
-    padding:              8px 12px;
-    spacing:               8px;
+
+    text-color:       @text;
+
+    border-radius:    0px;
 }
+
+
+/* Normal */
 
 element normal.normal {
     background-color: transparent;
-    text-color:         @text;
+    text-color:       @text;
 }
 
-element selected.normal {
-    background-color: @surface1;
-    text-color:         @lavender;
-    border:              0px 0px 0px 3px;
-    border-color:         @lavender;
-    border-radius:        0px;
+
+/* Alternate */
+
+element alternate.normal {
+    background-color: @backgroundSecondary;
+    text-color:       @text;
 }
+
+
+/* Selected */
+
+element selected.normal {
+    background-color: @surfaceSecondary;
+    text-color:       @accent;
+
+    border:           0px 0px 0px 3px;
+    border-color:     @accent;
+
+    border-radius:    0px;
+}
+
+
+/* Urgent */
+
+element normal.urgent {
+    background-color: transparent;
+    text-color:       @danger;
+}
+
+element alternate.urgent {
+    background-color: @backgroundSecondary;
+    text-color:       @danger;
+}
+
+element selected.urgent {
+    background-color: @surfaceSecondary;
+    text-color:       @danger;
+
+    border:           0px 0px 0px 3px;
+    border-color:     @danger;
+
+    border-radius:    0px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Text
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 element-text {
     background-color: transparent;
-    text-color:         inherit;
-    vertical-align:      0.5;
-    border-radius:       0px;
+
+    text-color:       inherit;
+
+    vertical-align:   0.5;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Error
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
 error-message {
-    background-color: @base;
-    text-color:         @red;
-    border-radius:       0px;
-    padding:              10px;
+    padding:          10px;
+
+    background-color: @background;
+    text-color:       @danger;
+
+    border-radius:    0px;
 }

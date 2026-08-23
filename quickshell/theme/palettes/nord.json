@@ -1,0 +1,36 @@
+{
+  "label": "Nord",
+
+  "aliases": [
+    "nord"
+  ],
+
+  "colors": {
+
+    "background": "#2E3440",
+    "backgroundSecondary": "#3B4252",
+    "backgroundDeep": "#242933",
+
+    "surface": "#434C5E",
+    "surfaceSecondary": "#4C566A",
+    "surfaceTertiary": "#616E88",
+
+    "overlay": "#616E88",
+    "overlaySecondary": "#7B88A1",
+    "overlayTertiary": "#8FBCBB",
+
+    "text": "#ECEFF4",
+    "textSecondary": "#E5E9F0",
+    "textMuted": "#D8DEE9",
+
+    "accent": "#88C0D0",
+    "accentSecondary": "#81A1C1",
+
+    "success": "#A3BE8C",
+    "warning": "#EBCB8B",
+    "danger": "#BF616A",
+    "info": "#5E81AC"
+  },
+
+  "semantic": {}
+}

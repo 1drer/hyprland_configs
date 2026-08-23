@@ -4,6 +4,7 @@
 require("keybinds")
 require("animations")
 require("envars")
+local colors = require("colors")
 
 ------------------
 ---- MONITORS ----
@@ -33,7 +34,7 @@ hl.monitor({
 -- Or execute your favorite apps at launch like this:
 --
 hl.on("hyprland.start", function()
-	hl.exec_cmd("waybar")
+	--	hl.exec_cmd("waybar")
 	hl.exec_cmd("awww-daemon")
 	hl.exec_cmd("quickshell")
 	hl.exec_cmd("rfkill unblock bluetooth")
@@ -67,32 +68,6 @@ end)
 -----------------------
 
 -- Refer to https://wiki.hypr.land/Configuring/Basics/Variables/
-local rosewater = "rgba(f5e0dcff)"
-local flamingo = "rgba(f2cdcdff)"
-local pink = "rgba(f5c2e7ff)"
-local mauve = "rgba(cba6f7ff)"
-local red = "rgba(f38ba8ff)"
-local maroon = "rgba(eba0acff)"
-local peach = "rgba(fab387ff)"
-local yellow = "rgba(f9e2afff)"
-local green = "rgba(a6e3a1ff)"
-local teal = "rgba(94e2d5ff)"
-local sky = "rgba(89dcebff)"
-local sapphire = "rgba(74c7ecff)"
-local blue = "rgba(89b4faff)"
-local lavender = "rgba(b4befeff)"
-local text = "rgba(cdd6f4ff)"
-local subtext1 = "rgba(bac2deff)"
-local subtext0 = "rgba(a6adc8ff)"
-local overlay2 = "rgba(9399b2ff)"
-local overlay1 = "rgba(7f849cff)"
-local overlay0 = "rgba(6c7086ff)"
-local surface2 = "rgba(585b70ff)"
-local surface1 = "rgba(45475aff)"
-local surface0 = "rgba(313244ff)"
-local base = "rgba(1e1e2eff)"
-local mantle = "rgba(181825ff)"
-local crust = "rgba(11111bff)"
 
 hl.config({
 	general = {
@@ -102,8 +77,8 @@ hl.config({
 		border_size = 2,
 
 		col = {
-			active_border = { colors = { lavender }, angle = 45 },
-			inactive_border = "rgba(595959aa)",
+			active_border = { colors = { colors.active_border }, angle = 45 },
+			inactive_border = colors.inactive_border,
 		},
 
 		-- Set to true to enable resizing windows by clicking and dragging on borders and gaps

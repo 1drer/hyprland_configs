@@ -1,3 +1,2 @@
-module Theme
-
 singleton ThemeManager 1.0 ThemeManager.qml
+ThemeSwitcher 1.0 ThemeSwitcher.qml

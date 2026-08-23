@@ -8,6 +8,7 @@ hl.bind(mod .. " + Return", hl.dsp.exec_cmd(terminal))
 hl.bind(mod .. " + C", hl.dsp.window.close())
 hl.bind(mod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mod .. " + B", hl.dsp.exec_cmd(browser))
+hl.bind(mod .. " + SHIFT + B", hl.dsp.exec_cmd("zen-browser --private-window"))
 hl.bind(mod .. " + R", hl.dsp.exec_cmd(menu))
 hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 --hl.bind(mod .. " + V", function()
@@ -54,9 +55,10 @@ hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd("~/.config/rofi/scripts/power-men
 
 -- wallpaper menu
 hl.bind(mod .. " + SHIFT + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
+hl.bind(mod .. " + SHIFT + T", hl.dsp.exec_cmd("qs ipc call theme toggle"))
 
 -- Reload
-hl.bind("SUPER + W", hl.dsp.exec_cmd("pkill waybar && waybar"))
+--hl.bind("SUPER + W", hl.dsp.exec_cmd("pkill quickshell"))
 
 -- Trackpad Gesture
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
