@@ -1,48 +1,31 @@
 {
   "label": "Gruvbox",
-  "aliases": ["gruvbox"],
+  "aliases": [
+    "gruvbox"
+  ],
   "colors": {
-    "base": "#282828",
-    "mantle": "#1d2021",
-    "crust": "#1d2021",
-    "surface0": "#3c3836",
-    "surface1": "#504945",
-    "surface2": "#665c54",
-    "overlay0": "#7c6f64",
-    "overlay1": "#928374",
-    "overlay2": "#a89984",
+    "background": "#282828",
+    "backgroundSecondary": "#1d2021",
+    "backgroundDeep": "#1d2021",
+
+    "surface": "#3c3836",
+    "surfaceSecondary": "#504945",
+    "surfaceTertiary": "#665c54",
+
+    "overlay": "#7c6f64",
+    "overlaySecondary": "#928374",
+    "overlayTertiary": "#a89984",
+
     "text": "#ebdbb2",
-    "subtext0": "#bdae93",
-    "subtext1": "#d5c4a1",
-    "lavender": "#d3869b",
-    "mauve": "#b16286",
-    "green": "#b8bb26",
-    "yellow": "#fabd2f",
-    "red": "#fb4934",
-    "blue": "#83a598",
-    "peach": "#fe8019",
-    "teal": "#8ec07c"
-  },
-  "semantic": {
-    "background": "base",
-    "backgroundSecondary": "mantle",
-    "backgroundDeep": "crust",
-    "surface": "surface0",
-    "surfaceSecondary": "surface1",
-    "surfaceTertiary": "surface2",
-    "overlay": "overlay0",
-    "overlaySecondary": "overlay1",
-    "overlayTertiary": "overlay2",
-    "text": "text",
-    "textSecondary": "subtext1",
-    "textMuted": "subtext0",
-    "accent": "lavender",
-    "accentSecondary": "mauve",
-    "success": "green",
-    "warning": "yellow",
-    "danger": "red",
-    "info": "blue",
-    "peach": "peach",
-    "teal": "teal"
+    "textSecondary": "#d5c4a1",
+    "textMuted": "#bdae93",
+
+    "accent": "#d3869b",
+    "accentSecondary": "#b16286",
+
+    "success": "#b8bb26",
+    "warning": "#fabd2f",
+    "danger": "#fb4934",
+    "info": "#83a598"
   }
 }
