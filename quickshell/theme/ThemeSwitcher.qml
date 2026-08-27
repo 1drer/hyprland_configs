@@ -436,7 +436,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: "#000000"
-        opacity: 0.35
+        opacity: 0.00
     }
     // ═════════════════════════════════════════════
     // Main selector

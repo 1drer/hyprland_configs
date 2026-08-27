@@ -12,12 +12,12 @@ TARGETS = [
     },
     {
         "name": "GTK 3",
-        "template": "gtk.css.tmpl",
+        "template": "gtk3.css.tmpl",
         "output": "~/.config/gtk-3.0/gtk.css",
     },
     {
         "name": "GTK 4",
-        "template": "gtk.css.tmpl",
+        "template": "gtk4.css.tmpl",
         "output": "~/.config/gtk-4.0/gtk.css",
     },
     {

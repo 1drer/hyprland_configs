@@ -1,0 +1,1061 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Quickshell Theme Manager — GTK 3 + GTK 4
+ * Generated from the active semantic palette
+ * DO NOT EDIT
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Semantic palette
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@define-color background          {{background}};
+@define-color backgroundSecondary {{backgroundSecondary}};
+@define-color backgroundDeep      {{backgroundDeep}};
+
+@define-color surface             {{surface}};
+@define-color surfaceSecondary    {{surfaceSecondary}};
+@define-color surfaceTertiary     {{surfaceTertiary}};
+
+@define-color overlay             {{overlay}};
+@define-color overlaySecondary    {{overlaySecondary}};
+@define-color overlayTertiary     {{overlayTertiary}};
+
+@define-color text                {{text}};
+@define-color textSecondary       {{textSecondary}};
+@define-color textMuted           {{textMuted}};
+
+@define-color accent              {{accent}};
+@define-color accentSecondary     {{accentSecondary}};
+
+@define-color success             {{success}};
+@define-color warning             {{warning}};
+@define-color danger              {{danger}};
+@define-color info                {{info}};
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Global
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+    color: @text;
+
+    border-radius: 0;
+    outline-width: 0;
+
+    box-shadow: none;
+    text-shadow: none;
+}
+
+window,
+.background {
+    background-color: @background;
+    color: @text;
+}
+
+window.background {
+    background-color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Typography
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+label {
+    color: @text;
+}
+
+.dim-label,
+label.dim-label {
+    color: @textMuted;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Header bars
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+headerbar,
+.titlebar {
+    background-color: @backgroundSecondary;
+    color: @text;
+
+    border: 0;
+    border-bottom: 1px solid @surfaceSecondary;
+
+    box-shadow: none;
+    background-image: none;
+}
+
+headerbar:backdrop,
+.titlebar:backdrop {
+    background-color: @backgroundSecondary;
+    color: @textMuted;
+}
+
+headerbar .title,
+headerbar .subtitle {
+    color: @text;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Header / Window Controls
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+windowcontrols {
+    color: @text;
+}
+
+windowcontrols button {
+    color: @text;
+    background-color: transparent;
+
+    border: 0;
+}
+
+windowcontrols button:hover {
+    color: @text;
+    background-color: @surface;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Navigation / Tabs — GTK 3
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+notebook {
+    background-color: @background;
+    color: @text;
+}
+
+notebook > header {
+    background-color: @backgroundSecondary;
+    border: 0;
+}
+
+notebook > header tabs {
+    background-color: @backgroundSecondary;
+}
+
+notebook > header tab {
+    background-color: transparent;
+    color: @textMuted;
+
+    border: 0;
+    border-radius: 0;
+
+    padding: 6px 12px;
+}
+
+notebook > header tab:hover {
+    background-color: @surface;
+    color: @text;
+}
+
+notebook > header tab:checked {
+    background-color: @accent;
+    color: @background;
+
+    box-shadow: none;
+}
+
+notebook > header tab:checked label {
+    color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Navigation / Tabs
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+tab {
+    color: @textMuted;
+    background-color: transparent;
+}
+
+tab:hover {
+    color: @text;
+    background-color: @surface;
+}
+
+tab:checked {
+    color: @background;
+    background-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Buttons — GTK 3 + GTK 4
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+button {
+    color: @text;
+    background-color: @surface;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+    text-shadow: none;
+    background-image: none;
+}
+
+button:hover {
+    color: @text;
+    background-color: @surfaceSecondary;
+    border-color: @overlay;
+}
+
+button:active,
+button:checked {
+    color: @background;
+    background-color: @accent;
+    border-color: @accent;
+
+    box-shadow: none;
+}
+
+button:focus {
+    border-color: @accent;
+    outline: 1px solid @accent;
+    outline-offset: -2px;
+}
+
+button:focus-visible {
+    border-color: @accent;
+    outline: 1px solid @accent;
+    outline-offset: -2px;
+}
+
+button:disabled {
+    color: @textMuted;
+    background-color: @backgroundSecondary;
+    border-color: @surface;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Button Images / Icons
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+button image {
+    color: @text;
+}
+
+button:hover image {
+    color: @text;
+}
+
+button:active image,
+button:checked image {
+    color: @background;
+}
+
+button:disabled image {
+    color: @textMuted;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Suggested / Destructive Buttons
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+button.suggested-action,
+button.suggested-action:checked {
+    color: @background;
+    background-color: @accent;
+    border-color: @accent;
+}
+
+button.suggested-action:hover {
+    color: @background;
+    background-color: @accentSecondary;
+    border-color: @accentSecondary;
+}
+
+button.destructive-action,
+button.destructive-action:checked {
+    color: @background;
+    background-color: @danger;
+    border-color: @danger;
+}
+
+button.destructive-action:hover {
+    color: @background;
+    background-color: @danger;
+    border-color: @danger;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Entries — GTK 3
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+entry {
+    color: @text;
+    background-color: @surface;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+    background-image: none;
+}
+
+entry:hover {
+    border-color: @overlay;
+}
+
+entry:focus {
+    color: @text;
+    background-color: @surface;
+
+    border-color: @accent;
+    outline: 1px solid @accent;
+    outline-offset: -2px;
+}
+
+entry:disabled {
+    color: @textMuted;
+    background-color: @backgroundSecondary;
+    border-color: @surface;
+}
+
+entry selection,
+entry:selected {
+    background-color: @accent;
+    color: @background;
+}
+
+entry image {
+    color: @textSecondary;
+}
+
+entry:focus image {
+    color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Entry
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+entry,
+text,
+searchentry,
+passwordentry {
+    color: @text;
+}
+
+textview,
+textview.view {
+    color: @text;
+    background-color: @surface;
+}
+
+textview.view border {
+    background-color: @surface;
+}
+
+textview.view selection,
+textview selection {
+    background-color: @accent;
+    color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Combo Boxes — GTK 3
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+combobox {
+    color: @text;
+}
+
+combobox button {
+    color: @text;
+    background-color: @surface;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+    background-image: none;
+}
+
+combobox button:hover {
+    color: @text;
+    background-color: @surfaceSecondary;
+    border-color: @overlay;
+}
+
+combobox button:active,
+combobox button:checked {
+    color: @background;
+    background-color: @accent;
+    border-color: @accent;
+}
+
+combobox button:focus {
+    border-color: @accent;
+    outline: 1px solid @accent;
+}
+
+combobox arrow {
+    color: @textSecondary;
+}
+
+combobox button:hover arrow {
+    color: @text;
+}
+
+combobox button:active arrow,
+combobox button:checked arrow {
+    color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 DropDown
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+dropdown {
+    color: @text;
+    background-color: @surface;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+dropdown:hover {
+    background-color: @surfaceSecondary;
+    border-color: @overlay;
+}
+
+dropdown:focus,
+dropdown:focus-visible {
+    border-color: @accent;
+    outline: 1px solid @accent;
+    outline-offset: -2px;
+}
+
+dropdown > button {
+    color: @text;
+    background-color: transparent;
+
+    border: 0;
+}
+
+dropdown > button:hover {
+    background-color: transparent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Menus / Popovers
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+menu,
+.menu,
+popover,
+popover.background {
+    background-color: @surface;
+    color: @text;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+menuitem,
+.menuitem {
+    color: @text;
+    background-color: transparent;
+
+    padding: 6px 10px;
+}
+
+menuitem:hover,
+.menuitem:hover,
+menuitem:focus,
+.menuitem:focus {
+    color: @text;
+    background-color: @surfaceSecondary;
+}
+
+menuitem:active,
+.menuitem:active,
+menuitem:selected,
+.menuitem:selected {
+    color: @background;
+    background-color: @accent;
+}
+
+menuitem:disabled,
+.menuitem:disabled {
+    color: @textMuted;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Popover / List Popup
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+popover contents {
+    background-color: @surface;
+    color: @text;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+}
+
+popover modelbutton {
+    color: @text;
+    background-color: transparent;
+
+    border: 0;
+    border-radius: 0;
+}
+
+popover modelbutton:hover {
+    color: @text;
+    background-color: @surfaceSecondary;
+}
+
+popover modelbutton:active,
+popover modelbutton:checked {
+    color: @background;
+    background-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Lists / Rows
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+list,
+listview,
+row {
+    background-color: @background;
+    color: @text;
+}
+
+row {
+    border: 0;
+}
+
+row:hover {
+    background-color: @surface;
+}
+
+row:selected {
+    background-color: @accent;
+    color: @background;
+}
+
+row:selected label {
+    color: @background;
+}
+
+list row:selected,
+listview row:selected {
+    background-color: @accent;
+    color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 List / ListBox
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+listbox {
+    color: @text;
+    background-color: @background;
+}
+
+listbox row {
+    color: @text;
+    background-color: transparent;
+}
+
+listbox row:hover {
+    background-color: @surface;
+}
+
+listbox row:selected {
+    color: @background;
+    background-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Tree Views — GTK 3
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+treeview {
+    color: @text;
+    background-color: @background;
+}
+
+treeview.view {
+    color: @text;
+    background-color: @background;
+}
+
+treeview.view:hover {
+    background-color: @surface;
+}
+
+treeview.view:selected {
+    color: @background;
+    background-color: @accent;
+}
+
+treeview.view:selected:focus {
+    color: @background;
+    background-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Scales / Sliders
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+scale {
+    color: @text;
+}
+
+scale trough {
+    background-color: @surfaceSecondary;
+
+    border: 0;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+scale highlight,
+scale fill {
+    background-color: @accent;
+
+    border: 0;
+    border-radius: 0;
+}
+
+scale slider {
+    background-color: @accent;
+
+    border: 1px solid @accent;
+    border-radius: 50%;
+
+    box-shadow: none;
+}
+
+scale slider:hover {
+    background-color: @accentSecondary;
+    border-color: @accentSecondary;
+}
+
+scale slider:active {
+    background-color: @accentSecondary;
+    border-color: @accentSecondary;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Progress Bars
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+progressbar {
+    color: @text;
+}
+
+progressbar trough {
+    background-color: @surfaceSecondary;
+
+    border: 0;
+    border-radius: 0;
+}
+
+progressbar progress {
+    background-color: @accent;
+
+    border: 0;
+    border-radius: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Check Buttons / Radio Buttons
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+checkbutton,
+radiobutton {
+    color: @text;
+}
+
+check,
+radio {
+    background-color: @surface;
+
+    border: 1px solid @overlay;
+    border-radius: 0;
+}
+
+check:hover,
+radio:hover {
+    border-color: @accent;
+}
+
+check:checked,
+radio:checked {
+    background-color: @accent;
+    border-color: @accent;
+    color: @background;
+}
+
+check:disabled,
+radio:disabled {
+    background-color: @backgroundSecondary;
+    border-color: @surface;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Switches
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+switch {
+    background-color: @surfaceSecondary;
+
+    border: 1px solid @overlay;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+switch:hover {
+    background-color: @surfaceTertiary;
+}
+
+switch:checked {
+    background-color: @accent;
+    border-color: @accent;
+}
+
+switch slider {
+    background-color: @text;
+
+    border: 0;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+switch:checked slider {
+    background-color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Scrollbars
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+scrollbar {
+    background-color: @background;
+}
+
+scrollbar trough {
+    background-color: @background;
+}
+
+scrollbar slider {
+    background-color: @overlay;
+
+    border: 0;
+    border-radius: 0;
+
+    min-width: 8px;
+    min-height: 8px;
+}
+
+scrollbar slider:hover {
+    background-color: @overlaySecondary;
+}
+
+scrollbar slider:active {
+    background-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Separators
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+separator {
+    background-color: @surfaceSecondary;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Frames
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+frame {
+    color: @text;
+}
+
+frame > border {
+    border-color: @surfaceSecondary;
+    border-radius: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Tooltips
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+tooltip,
+tooltip.background {
+    background-color: @surface;
+    color: @text;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+tooltip label {
+    color: @text;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Selection
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+selection {
+    background-color: @accent;
+    color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Focus
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+*:focus {
+    outline-color: @accent;
+}
+
+*:focus-visible {
+    outline-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Links
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+link {
+    color: @info;
+}
+
+link:hover {
+    color: @accent;
+}
+
+link:visited {
+    color: @accentSecondary;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Info / Warning / Error States
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.error,
+.error label {
+    color: @danger;
+}
+
+.warning,
+.warning label {
+    color: @warning;
+}
+
+.success,
+.success label {
+    color: @success;
+}
+
+.info,
+.info label {
+    color: @info;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Utility Classes
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.accent {
+    color: @accent;
+}
+
+.dim-label {
+    color: @textMuted;
+}
+
+.osd {
+    background-color: @backgroundDeep;
+    color: @text;
+
+    border: 1px solid @surfaceSecondary;
+}
+
+.card {
+    background-color: @surface;
+    color: @text;
+
+    border: 1px solid @surfaceSecondary;
+    border-radius: 0;
+
+    box-shadow: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 3 Compatibility
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+GtkWindow {
+    background-color: @background;
+    color: @text;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Generic Containers
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+window > box,
+window > overlay {
+    color: @text;
+}
+
+viewport {
+    background-color: @background;
+    color: @text;
+}
+
+scrolledwindow {
+    background-color: @background;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Cards / Frames
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+frame {
+    background-color: transparent;
+    color: @text;
+}
+
+frame > border {
+    border-color: @surfaceSecondary;
+    border-radius: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Check / Radio
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+checkbutton check,
+radiobutton radio {
+    background-color: @surface;
+    border-color: @overlay;
+}
+
+checkbutton check:checked,
+radiobutton radio:checked {
+    background-color: @accent;
+    border-color: @accent;
+    color: @background;
+}
+
+checkbutton:hover check,
+radiobutton:hover radio {
+    border-color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Spinner
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+spinner {
+    color: @accent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Level Bar
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+levelbar {
+    color: @text;
+}
+
+levelbar trough {
+    background-color: @surfaceSecondary;
+    border: 0;
+    border-radius: 0;
+}
+
+levelbar block.filled {
+    background-color: @accent;
+}
+
+levelbar block.empty {
+    background-color: @surfaceSecondary;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GTK 4 Status / Info Bars
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+infobar {
+    color: @text;
+    background-color: @surface;
+    border: 1px solid @surfaceSecondary;
+}
+
+infobar.info {
+    border-color: @info;
+}
+
+infobar.warning {
+    border-color: @warning;
+}
+
+infobar.error {
+    border-color: @danger;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * End
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+

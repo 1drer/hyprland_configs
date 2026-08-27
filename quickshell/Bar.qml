@@ -1,3 +1,5 @@
+//@ pragma UseQApplication
+
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -11,7 +13,7 @@ import QtQuick
 import QtQuick.Layouts
 
 import "./theme"
-
+import "./services"
 
 PanelWindow {
     id: bar
@@ -31,19 +33,12 @@ PanelWindow {
     implicitHeight: 30
     color: ThemeManager.backgroundDeep
 
-
     // ═══════════════════════════════════════════════════════════════════
     // Main Layout
     // ═══════════════════════════════════════════════════════════════════
 
-    RowLayout {
+    Item {
         anchors.fill: parent
-
-        anchors.leftMargin: 4
-        anchors.rightMargin: 8
-
-        spacing: 16
-
 
         // ═══════════════════════════════════════════════════════════════
         // Left
@@ -52,8 +47,13 @@ PanelWindow {
         RowLayout {
             id: left
 
-            spacing: 8
+            anchors {
+                left: parent.left
+                leftMargin: 4
+                verticalCenter: parent.verticalCenter
+            }
 
+            spacing: 8
 
             // ───────────────────────────────────────────────────────────
             // Workspaces
@@ -102,17 +102,14 @@ PanelWindow {
                         readonly property bool urgent:
                             workspace?.urgent ?? false
 
-
-                        width: bar.height - 8
-                        height: bar.height - 8
-
+                        width: bar.implicitHeight - 8
+                        height: bar.implicitHeight - 8
 
                         color: urgent
                             ? ThemeManager.danger
                             : active
                                 ? ThemeManager.accent
                                 : "transparent"
-
 
                         Text {
                             anchors.fill: parent
@@ -145,7 +142,6 @@ PanelWindow {
                                         : ThemeManager.textMuted
                         }
 
-
                         MouseArea {
                             anchors.fill: parent
 
@@ -162,7 +158,6 @@ PanelWindow {
                     }
                 }
             }
-
 
             // ───────────────────────────────────────────────────────────
             // Active Window
@@ -192,7 +187,6 @@ PanelWindow {
                         250
                     )
 
-
                 Rectangle {
                     anchors {
                         left: parent.left
@@ -204,7 +198,6 @@ PanelWindow {
 
                     color: ThemeManager.accent
                 }
-
 
                 Text {
                     id: activeWindowText
@@ -241,435 +234,459 @@ PanelWindow {
                 }
             }
         }
+
         // ═══════════════════════════════════════════════════════════════
         // Right
         // ═══════════════════════════════════════════════════════════════
 
-        RowLayout {
-            id: right
+        Item {
+            id: rightContainer
 
-            spacing: 16
+            anchors {
+                right: parent.right
+                rightMargin: 8
+                verticalCenter: parent.verticalCenter
+            }
 
+            implicitWidth:
+                rightRow.implicitWidth
+
+            implicitHeight:
+                rightRow.implicitHeight
 
             // ───────────────────────────────────────────────────────────
-            // System Tray
+            // Control Center Mouse Area
+            //
+            // This covers the whole right section.
+            // The tray has a higher z value so tray clicks pass through
+            // to the tray icons instead.
+            // ───────────────────────────────────────────────────────────
+
+            MouseArea {
+                id: controlCenterMouseArea
+
+                anchors.fill: parent
+
+                z: 0
+
+                cursorShape:
+                    Qt.PointingHandCursor
+
+                onClicked:
+                    ControlCenterState.toggle()
+            }
+
+            // ───────────────────────────────────────────────────────────
+            // Right Row
             // ───────────────────────────────────────────────────────────
 
             RowLayout {
-                id: trayRow
+                id: rightRow
 
-                spacing: 10
+                anchors.fill: parent
 
+                spacing: 16
 
-                Repeater {
-                    model: SystemTray.items
+                // ───────────────────────────────────────────────────────
+                // System Tray
+                // ───────────────────────────────────────────────────────
 
-                    delegate: Image {
-                        required property var modelData
+                RowLayout {
+                    id: trayRow
 
-                        source:
-                            modelData.icon
+                    spacing: 10
 
-                        width: 16
-                        height: 16
+                    z: 2
 
-                        sourceSize:
-                            Qt.size(16, 16)
+                    Repeater {
+                        model: SystemTray.items
 
+                        delegate: Item {
+                            required property var modelData
 
-                        MouseArea {
-                            anchors.fill: parent
+                            width: 16
+                            height: 16
 
-                            cursorShape:
-                                Qt.PointingHandCursor
+                            Image {
+                                anchors.fill: parent
 
-                            acceptedButtons:
-                                Qt.LeftButton |
-                                Qt.RightButton
+                                source:
+                                    modelData.icon
 
+                                sourceSize:
+                                    Qt.size(16, 16)
+                            }
 
-                            onClicked: (mouse) => {
-                                if (
-                                    mouse.button ===
+                            MouseArea {
+                                anchors.fill: parent
+
+                                z: 10
+
+                                cursorShape:
+                                    Qt.PointingHandCursor
+
+                                acceptedButtons:
+                                    Qt.LeftButton |
                                     Qt.RightButton
-                                ) {
-                                    modelData.display(
-                                        bar,
-                                        mouse.x,
-                                        mouse.y
-                                    )
-                                } else {
-                                    modelData.activate()
+
+                                onClicked: (mouse) => {
+                                    if (
+                                        mouse.button ===
+                                        Qt.RightButton
+                                    ) {
+                                        modelData.display(
+                                            bar,
+                                            mouse.x,
+                                            mouse.y
+                                        )
+                                    } else {
+                                        modelData.activate()
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
+                // ───────────────────────────────────────────────────────
+                // Volume
+                // ───────────────────────────────────────────────────────
 
-            // ───────────────────────────────────────────────────────────
-            // Volume
-            // ───────────────────────────────────────────────────────────
+                Text {
+                    id: volumeText
 
-            Text {
-                id: volumeText
+                    z: 1
 
-                readonly property var sink:
-                    Pipewire.defaultAudioSink
+                    readonly property var sink:
+                        Pipewire.defaultAudioSink
 
-                readonly property int volume:
-                    sink?.audio
-                        ? Math.round(
-                            sink.audio.volume * 100
-                        )
-                        : 0
+                    readonly property int volume:
+                        sink?.audio
+                            ? Math.round(
+                                sink.audio.volume * 100
+                            )
+                            : 0
 
-                readonly property bool muted:
-                    sink?.audio?.muted ?? false
+                    readonly property bool muted:
+                        sink?.audio?.muted ?? false
 
+                    PwObjectTracker {
+                        objects: [volumeText.sink]
+                    }
 
-                PwObjectTracker {
-                    objects: [volumeText.sink]
+                    text:
+                        muted
+                            ? "Muted"
+                            : volume + "%"
+
+                    color:
+                        muted
+                            ? ThemeManager.textMuted
+                            : ThemeManager.accent
+
+                    font.family:
+                        ThemeManager.fontFamily
+
+                    font.pixelSize:
+                        ThemeManager.fontNormal
+
+                    font.weight:
+                        ThemeManager.fontHeavy
                 }
 
+                // ───────────────────────────────────────────────────────
+                // Wi-Fi
+                // ───────────────────────────────────────────────────────
 
-                text:
-                    muted
-                        ? "Muted"
-                        : volume + "%"
+                Text {
+                    id: wifiText
 
+                    z: 1
 
-                color:
-                    muted
-                        ? ThemeManager.textMuted
-                        : ThemeManager.accent
-
-
-                font.family:
-                    ThemeManager.fontFamily
-
-                font.pixelSize:
-                    ThemeManager.fontNormal
-
-                font.weight:
-                    ThemeManager.fontHeavy
-            }
-
-
-            // ───────────────────────────────────────────────────────────
-            // Wi-Fi
-            // ───────────────────────────────────────────────────────────
-
-            Text {
-                id: wifiText
-
-                readonly property var wifiDevice:
-                    Networking.devices.values.find(
-                        device => device.type === 1
-                    )
-
-                readonly property var connectedNetwork:
-                    wifiDevice?.networks.values.find(
-                        network => network.connected
-                    )
-
-                readonly property bool wifiEnabled:
-                    Networking.wifiEnabled
-
-                readonly property bool connected:
-                    wifiDevice?.connected ?? false
-
-                readonly property int signalStrength:
-                    connectedNetwork
-                        ? Math.round(
-                            connectedNetwork.signalStrength *
-                            100
+                    readonly property var wifiDevice:
+                        Networking.devices.values.find(
+                            device => device.type === 1
                         )
-                        : 0
 
+                    readonly property var connectedNetwork:
+                        wifiDevice?.networks.values.find(
+                            network => network.connected
+                        )
 
-                text:
-                    !wifiEnabled
-                        ? "Off"
-                        : connected
-                            ? "  " + signalStrength + "%"
-                            : ""
+                    readonly property bool wifiEnabled:
+                        Networking.wifiEnabled
 
+                    readonly property bool connected:
+                        wifiDevice?.connected ?? false
 
-                color:
-                    connected
-                        ? ThemeManager.info
-                        : ThemeManager.textMuted
+                    readonly property int signalStrength:
+                        connectedNetwork
+                            ? Math.round(
+                                connectedNetwork.signalStrength * 100
+                            )
+                            : 0
 
+                    text:
+                        !wifiEnabled
+                            ? "Off"
+                            : connected
+                                ? "  " + signalStrength + "%"
+                                : ""
 
-                font.family:
-                    ThemeManager.fontFamily
-
-                font.pixelSize:
-                    ThemeManager.fontNormal
-
-                font.weight:
-                    ThemeManager.fontHeavy
-            }
-
-
-            // ───────────────────────────────────────────────────────────
-            // Bluetooth
-            // ───────────────────────────────────────────────────────────
-
-            Text {
-                id: bluetoothText
-
-                readonly property var bluetoothAdapter:
-                    Bluetooth.defaultAdapter
-
-                readonly property bool bluetoothEnabled:
-                    bluetoothAdapter?.enabled ?? false
-
-                readonly property int connectedDevices:
-                    Bluetooth.devices.values.filter(
-                        device => device.connected
-                    ).length
-
-
-                text:
-                    !bluetoothEnabled
-                        ? "Off"
-                        : connectedDevices > 0
-                            ? "BT: " + connectedDevices
-                            : "BT"
-
-
-                color:
-                    connectedDevices
-                        ? ThemeManager.info
-                        : bluetoothEnabled
-                            ? ThemeManager.accent
+                    color:
+                        connected
+                            ? ThemeManager.info
                             : ThemeManager.textMuted
 
+                    font.family:
+                        ThemeManager.fontFamily
 
-                font.family:
-                    ThemeManager.fontFamily
+                    font.pixelSize:
+                        ThemeManager.fontNormal
 
-                font.pixelSize:
-                    ThemeManager.fontNormal
-
-                font.weight:
-                    ThemeManager.fontHeavy
-            }
-
-
-            // ───────────────────────────────────────────────────────────
-            // Power Profile
-            // ───────────────────────────────────────────────────────────
-
-            Text {
-                id: powerProfileText
-
-                readonly property var profile:
-                    PowerProfiles.profile
-
-
-                text: {
-                    switch (profile) {
-                    case PowerProfile.PowerSaver:
-                        return "Stealth"
-
-                    case PowerProfile.Balanced:
-                        return "Steady"
-
-                    case PowerProfile.Performance:
-                        return "Stride"
-
-                    default:
-                        return "Steady"
-                    }
+                    font.weight:
+                        ThemeManager.fontHeavy
                 }
 
+                // ───────────────────────────────────────────────────────
+                // Bluetooth
+                // ───────────────────────────────────────────────────────
 
-                color: {
-                    switch (profile) {
-                    case PowerProfile.PowerSaver:
-                        return ThemeManager.success
+                Text {
+                    id: bluetoothText
 
-                    case PowerProfile.Balanced:
+                    z: 1
+
+                    readonly property var bluetoothAdapter:
+                        Bluetooth.defaultAdapter
+
+                    readonly property bool bluetoothEnabled:
+                        bluetoothAdapter?.enabled ?? false
+
+                    readonly property int connectedDevices:
+                        Bluetooth.devices.values.filter(
+                            device => device.connected
+                        ).length
+
+                    text:
+                        !bluetoothEnabled
+                            ? "Off"
+                            : connectedDevices > 0
+                                ? "BT: " + connectedDevices
+                                : "BT"
+
+                    color:
+                        connectedDevices
+                            ? ThemeManager.info
+                            : bluetoothEnabled
+                                ? ThemeManager.accent
+                                : ThemeManager.textMuted
+
+                    font.family:
+                        ThemeManager.fontFamily
+
+                    font.pixelSize:
+                        ThemeManager.fontNormal
+
+                    font.weight:
+                        ThemeManager.fontHeavy
+                }
+
+                // ───────────────────────────────────────────────────────
+                // Power Profile
+                // ───────────────────────────────────────────────────────
+
+                Text {
+                    id: powerProfileText
+
+                    z: 1
+
+                    readonly property var profile:
+                        PowerProfiles.profile
+
+                    text: {
+                        switch (profile) {
+                        case PowerProfile.PowerSaver:
+                            return "Stealth"
+
+                        case PowerProfile.Balanced:
+                            return "Steady"
+
+                        case PowerProfile.Performance:
+                            return "Stride"
+
+                        default:
+                            return "Steady"
+                        }
+                    }
+
+                    color: {
+                        switch (profile) {
+                        case PowerProfile.PowerSaver:
+                            return ThemeManager.success
+
+                        case PowerProfile.Balanced:
+                            return ThemeManager.accent
+
+                        case PowerProfile.Performance:
+                            return ThemeManager.danger
+
+                        default:
+                            return ThemeManager.accent
+                        }
+                    }
+
+                    font.family:
+                        ThemeManager.fontFamily
+
+                    font.pixelSize:
+                        ThemeManager.fontNormal
+
+                    font.weight:
+                        ThemeManager.fontHeavy
+                }
+
+                // ───────────────────────────────────────────────────────
+                // Battery
+                // ───────────────────────────────────────────────────────
+
+                Text {
+                    id: batteryText
+
+                    z: 1
+
+                    property var battery:
+                        UPower.displayDevice
+
+                    property bool pluggedIn:
+                        !UPower.onBattery
+
+                    property bool shouldBlink:
+                        battery.ready &&
+                        !pluggedIn &&
+                        battery.percentage <= 0.05
+
+                    function batteryColor(pct, plugged) {
+                        if (plugged)
+                            return ThemeManager.success
+
+                        if (pct <= 0.10)
+                            return ThemeManager.danger
+
+                        if (pct <= 0.20)
+                            return ThemeManager.warning
+
+                        if (pct <= 0.30)
+                            return ThemeManager.peach
+
                         return ThemeManager.accent
-
-                    case PowerProfile.Performance:
-                        return ThemeManager.danger
-
-                    default:
-                        return ThemeManager.accent
-                    }
-                }
-
-
-                font.family:
-                    ThemeManager.fontFamily
-
-                font.pixelSize:
-                    ThemeManager.fontNormal
-
-                font.weight:
-                    ThemeManager.fontHeavy
-            }
-
-
-            // ───────────────────────────────────────────────────────────
-            // Battery
-            // ───────────────────────────────────────────────────────────
-
-            Text {
-                id: batteryText
-
-                property var battery:
-                    UPower.displayDevice
-
-                property bool pluggedIn:
-                    !UPower.onBattery
-
-                property bool shouldBlink:
-                    battery.ready &&
-                    !pluggedIn &&
-                    battery.percentage <= 0.05
-
-
-                function batteryColor(pct, plugged) {
-                    if (plugged)
-                        return ThemeManager.success
-
-                    if (pct <= 0.10)
-                        return ThemeManager.danger
-
-                    if (pct <= 0.20)
-                        return ThemeManager.warning
-
-                    if (pct <= 0.30)
-                        return ThemeManager.peach
-
-                    return ThemeManager.accent
-                }
-
-
-                text:
-                    battery.ready
-                        ? Math.round(
-                            battery.percentage * 100
-                        ) + "%"
-                        : ""
-
-
-                color:
-                    battery.ready
-                        ? batteryColor(
-                            battery.percentage,
-                            pluggedIn
-                        )
-                        : ThemeManager.accent
-
-
-                font.family:
-                    ThemeManager.fontFamily
-
-                font.pixelSize:
-                    ThemeManager.fontNormal
-
-                font.weight:
-                    ThemeManager.fontHeavy
-
-
-                onShouldBlinkChanged: {
-                    if (shouldBlink) {
-                        blinkAnim.restart()
-                    } else {
-                        blinkAnim.stop()
-                        opacity = 1.0
-                    }
-                }
-
-
-                SequentialAnimation {
-                    id: blinkAnim
-
-                    loops:
-                        Animation.Infinite
-
-
-                    NumberAnimation {
-                        target: batteryText
-
-                        property: "opacity"
-
-                        from: 1.0
-                        to: 0.2
-
-                        duration: 500
                     }
 
+                    text:
+                        battery.ready
+                            ? Math.round(
+                                battery.percentage * 100
+                            ) + "%"
+                            : ""
 
-                    NumberAnimation {
-                        target: batteryText
+                    color:
+                        battery.ready
+                            ? batteryColor(
+                                battery.percentage,
+                                pluggedIn
+                            )
+                            : ThemeManager.accent
 
-                        property: "opacity"
+                    font.family:
+                        ThemeManager.fontFamily
 
-                        from: 0.2
-                        to: 1.0
+                    font.pixelSize:
+                        ThemeManager.fontNormal
 
-                        duration: 500
+                    font.weight:
+                        ThemeManager.fontHeavy
+
+                    onShouldBlinkChanged: {
+                        if (shouldBlink) {
+                            blinkAnim.restart()
+                        } else {
+                            blinkAnim.stop()
+                            opacity = 1.0
+                        }
+                    }
+
+                    SequentialAnimation {
+                        id: blinkAnim
+
+                        loops:
+                            Animation.Infinite
+
+                        NumberAnimation {
+                            target: batteryText
+
+                            property: "opacity"
+
+                            from: 1.0
+                            to: 0.2
+
+                            duration: 500
+                        }
+
+                        NumberAnimation {
+                            target: batteryText
+
+                            property: "opacity"
+
+                            from: 0.2
+                            to: 1.0
+
+                            duration: 500
+                        }
                     }
                 }
             }
         }
-      }
-      
 
         // ═══════════════════════════════════════════════════════════════
         // Center
         // ═══════════════════════════════════════════════════════════════
 
+        Text {
+            id: clock
 
-            Text {
-                id: clock
+            anchors.centerIn: parent
 
-                anchors.centerIn: parent
+            font.family:
+                ThemeManager.fontFamily
 
-                font.family:
-                    ThemeManager.fontFamily
+            font.pixelSize:
+                ThemeManager.fontNormal
 
-                font.pixelSize:
-                    ThemeManager.fontNormal
+            font.weight:
+                ThemeManager.fontHeavy
 
-                font.weight:
-                    ThemeManager.fontHeavy
+            color:
+                ThemeManager.text
 
-                color:
-                    ThemeManager.text
-
-
-                function refresh() {
-                    text = Qt.formatDateTime(
-                        new Date(),
-                        "MMM dd  hh:mm"
-                    )
-                }
-
-
-                Component.onCompleted:
-                    refresh()
-
-
-                Timer {
-                    interval: 1000
-
-                    running: true
-                    repeat: true
-
-                    onTriggered:
-                        clock.refresh()
-                }
+            function refresh() {
+                text = Qt.formatDateTime(
+                    new Date(),
+                    "MMM dd  hh:mm"
+                )
             }
 
+            Component.onCompleted:
+                refresh()
 
+            Timer {
+                interval: 1000
 
+                running: true
+                repeat: true
+
+                onTriggered:
+                    clock.refresh()
+            }
+        }
+    }
 }

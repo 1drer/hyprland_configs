@@ -1,0 +1,756 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Quickshell Theme Manager — GTK4
+ * Generated automatically — DO NOT EDIT
+ * Full literal-selector theming, no rounding, no reliance on
+ * libadwaita's named-color inheritance.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-color: transparent;
+    outline-offset: -2px;
+    -gtk-secondary-caret-color: {{accent}};
+}
+
+/* ── Base / windows ─────────────────────────────────────────────────────── */
+window,
+.background {
+    background-color: {{background}};
+    color: {{text}};
+}
+window:backdrop,
+.background:backdrop {
+    background-color: {{background}};
+    color: {{textMuted}};
+}
+window.csd,
+window.solid-csd {
+    border-radius: 0;
+    box-shadow: none;
+}
+decoration {
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ── Views / text ───────────────────────────────────────────────────────── */
+.view,
+textview,
+textview > text {
+    background-color: {{background}};
+    color: {{text}};
+}
+.view:disabled,
+textview:disabled {
+    color: {{textMuted}};
+}
+selection,
+*:selected,
+textview text selection {
+    background-color: {{accent}};
+    color: {{background}};
+}
+.dim-label,
+label.separator,
+.dimmed {
+    color: {{textMuted}};
+}
+
+/* ── Header bars ────────────────────────────────────────────────────────── */
+headerbar,
+.titlebar,
+headerbar.flat {
+    background-color: {{backgroundSecondary}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: none;
+}
+headerbar:backdrop,
+.titlebar:backdrop {
+    background-color: {{backgroundSecondary}};
+    color: {{textMuted}};
+}
+headerbar .title,
+windowtitle .title {
+    color: {{text}};
+    font-weight: bold;
+}
+headerbar .subtitle,
+windowtitle .subtitle {
+    color: {{textSecondary}};
+}
+windowcontrols > button {
+    border-radius: 0;
+}
+windowcontrols > button.minimize > image {
+    background-color: {{warning}};
+}
+windowcontrols > button.maximize > image {
+    background-color: {{success}};
+}
+windowcontrols > button.close > image {
+    background-color: {{danger}};
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+button {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: none;
+}
+button:hover {
+    background-color: {{surfaceSecondary}};
+}
+button:active,
+button:checked {
+    background-color: {{surfaceTertiary}};
+}
+button:disabled {
+    background-color: {{backgroundSecondary}};
+    color: {{textMuted}};
+}
+button:focus:focus-visible {
+    outline-color: {{accent}};
+}
+button.suggested-action {
+    background-color: {{accent}};
+    color: {{background}};
+}
+button.suggested-action:hover {
+    background-image: image(alpha({{background}}, 0.1));
+}
+button.destructive-action {
+    background-color: {{danger}};
+    color: {{background}};
+}
+button.destructive-action:hover {
+    background-image: image(alpha({{background}}, 0.1));
+}
+button.flat {
+    background-color: transparent;
+    color: {{textSecondary}};
+}
+button.flat:hover {
+    background-color: {{surface}};
+    color: {{text}};
+}
+button.flat:checked {
+    background-color: {{surfaceSecondary}};
+    color: {{text}};
+}
+button.osd {
+    background-color: {{backgroundDeep}};
+    color: {{text}};
+    border-radius: 0;
+}
+button.osd:hover {
+    background-color: {{surfaceSecondary}};
+}
+button.circular,
+button.pill,
+menubutton.circular > button,
+menubutton.pill > button {
+    border-radius: 0;
+}
+button.card {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: 0 0 0 1px {{surfaceSecondary}};
+}
+button.card:hover {
+    background-image: image(alpha({{text}}, 0.04));
+}
+button.card:checked {
+    background-image: image(alpha({{accent}}, 0.25));
+}
+menubutton.suggested-action,
+splitbutton.suggested-action {
+    background-color: {{accent}};
+    color: {{background}};
+    border-radius: 0;
+}
+menubutton.destructive-action,
+splitbutton.destructive-action {
+    background-color: {{danger}};
+    color: {{background}};
+    border-radius: 0;
+}
+button.link,
+link {
+    color: {{info}};
+}
+button.link:hover,
+link:hover {
+    color: {{accent}};
+}
+
+/* ── Toggle groups ──────────────────────────────────────────────────────── */
+toggle-group {
+    background-color: {{surface}};
+    border-radius: 0;
+}
+toggle-group > toggle {
+    border-radius: 0;
+    color: {{textSecondary}};
+}
+toggle-group > toggle:hover {
+    background-color: {{surfaceSecondary}};
+}
+toggle-group > toggle:checked {
+    background-color: {{accent}};
+    color: {{background}};
+}
+
+/* ── Entries / spin buttons ─────────────────────────────────────────────── */
+entry,
+spinbutton,
+entry.flat {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: none;
+    caret-color: {{accent}};
+}
+entry:focus-within,
+spinbutton:focus-within {
+    outline-color: {{accent}};
+}
+entry:disabled,
+spinbutton:disabled {
+    background-color: {{backgroundSecondary}};
+    color: {{textMuted}};
+}
+entry image,
+spinbutton image {
+    color: {{textSecondary}};
+}
+entry.error {
+    outline-color: {{danger}};
+}
+entry.warning {
+    outline-color: {{warning}};
+}
+entry.success {
+    outline-color: {{success}};
+}
+spinbutton > button {
+    border-radius: 0;
+}
+
+/* ── Dropdown / combo ───────────────────────────────────────────────────── */
+dropdown,
+combobox {
+    color: {{text}};
+}
+dropdown > button,
+combobox > button {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+}
+dropdown > button:hover,
+combobox > button:hover {
+    background-color: {{surfaceSecondary}};
+}
+dropdown popover.menu,
+combobox popover.menu {
+    background-color: {{surface}};
+    border-radius: 0;
+}
+
+/* ── Lists / rows ───────────────────────────────────────────────────────── */
+listview,
+list,
+.navigation-sidebar {
+    background-color: {{background}};
+    color: {{text}};
+}
+listview > row,
+list > row {
+    border-radius: 0;
+}
+listview > row:hover,
+list > row:hover,
+row.activatable:hover {
+    background-color: {{surface}};
+}
+listview > row:selected,
+list > row:selected,
+row:selected {
+    background-color: {{accent}};
+    color: {{background}};
+}
+row:selected label,
+row:selected image {
+    color: {{background}};
+}
+.navigation-sidebar > row:selected {
+    background-color: {{accent}};
+    color: {{background}};
+}
+.navigation-sidebar > row:hover {
+    background-color: {{surface}};
+}
+
+/* Boxed lists / content lists (AdwPreferencesGroup style) */
+list.boxed-list,
+list.content,
+list.boxed-list-separate > row {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: 0 0 0 1px {{surfaceSecondary}};
+}
+list.boxed-list > row,
+list.content > row {
+    border-radius: 0;
+}
+row > box.header {
+    color: {{text}};
+}
+row label.subtitle {
+    color: {{textSecondary}};
+}
+
+/* ── Column view / tree view ────────────────────────────────────────────── */
+columnview,
+treeview.view {
+    background-color: {{background}};
+    color: {{text}};
+}
+columnview > header > button,
+treeview.view > header > button {
+    background-color: {{backgroundSecondary}};
+    border-radius: 0;
+    border-color: {{surfaceSecondary}};
+}
+columnview > listview > row > cell,
+treeview.view > listview > row > cell {
+    border-left-color: {{surfaceSecondary}};
+}
+
+/* ── Popovers / menus ───────────────────────────────────────────────────── */
+popover,
+popover.background,
+popover > contents,
+popover > arrow {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: 0 0 0 1px {{surfaceSecondary}};
+}
+menu,
+.menu {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+}
+menuitem,
+modelbutton,
+popover.menu modelbutton {
+    color: {{text}};
+    border-radius: 0;
+}
+menuitem:hover,
+modelbutton:hover,
+popover.menu modelbutton:hover {
+    background-color: {{surfaceSecondary}};
+}
+menu separator,
+popover separator {
+    background-color: {{surfaceSecondary}};
+}
+popover.menu accelerator {
+    color: {{textSecondary}};
+}
+
+/* ── Switches ───────────────────────────────────────────────────────────── */
+switch {
+    background-color: {{surfaceSecondary}};
+    border-radius: 0;
+}
+switch:checked {
+    background-color: {{accent}};
+}
+switch:disabled {
+    opacity: 0.5;
+}
+switch > slider {
+    background-color: {{text}};
+    border-radius: 0;
+}
+switch:checked > slider {
+    background-color: {{background}};
+}
+
+/* ── Check / radio ──────────────────────────────────────────────────────── */
+check,
+radio {
+    background-color: {{surfaceSecondary}};
+    border-radius: 0;
+    color: transparent;
+}
+check:hover,
+radio:hover {
+    background-color: {{surfaceTertiary}};
+}
+check:checked,
+check:indeterminate,
+radio:checked,
+radio:indeterminate {
+    background-color: {{accent}};
+    color: {{background}};
+}
+check:disabled,
+radio:disabled {
+    background-color: {{backgroundSecondary}};
+}
+
+/* ── Scale / sliders ────────────────────────────────────────────────────── */
+scale trough {
+    background-color: {{surfaceSecondary}};
+    border-radius: 0;
+}
+scale trough:disabled {
+    background-color: {{backgroundSecondary}};
+}
+scale highlight {
+    background-color: {{accent}};
+}
+scale fill {
+    background-color: {{surfaceSecondary}};
+}
+scale > trough > slider {
+    background-color: {{background}};
+    box-shadow: 0 0 0 2px {{accent}};
+    border-radius: 0;
+}
+scale:hover > trough > slider {
+    box-shadow: 0 0 0 2px {{accent}}, 0 0 0 6px {{surfaceSecondary}};
+}
+scale marks,
+scale value {
+    color: {{textSecondary}};
+}
+
+/* ── Progress / level bars ──────────────────────────────────────────────── */
+progressbar trough,
+progressbar > trough {
+    background-color: {{surfaceSecondary}};
+    border-radius: 0;
+}
+progressbar progress,
+progressbar > trough > progress {
+    background-color: {{accent}};
+    border-radius: 0;
+}
+levelbar trough {
+    border-radius: 0;
+}
+levelbar block.low {
+    background-color: {{warning}};
+}
+levelbar block.high,
+levelbar block:not(.empty) {
+    background-color: {{accent}};
+}
+levelbar block.full {
+    background-color: {{success}};
+}
+levelbar block.empty {
+    background-color: {{surfaceSecondary}};
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+scrollbar {
+    background-color: transparent;
+}
+scrollbar > range > trough > slider,
+scrollbar slider {
+    background-color: {{overlay}};
+    border-radius: 0;
+}
+scrollbar slider:hover {
+    background-color: {{overlaySecondary}};
+}
+scrollbar slider:active {
+    background-color: {{accent}};
+}
+
+/* ── Tooltips ───────────────────────────────────────────────────────────── */
+tooltip,
+tooltip.background {
+    background-color: {{backgroundDeep}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: 0 0 0 1px {{surfaceSecondary}};
+}
+.card.activatable:hover {
+    background-image: image(alpha({{text}}, 0.03));
+}
+
+/* ── Sidebar / content panes ────────────────────────────────────────────── */
+.sidebar-pane {
+    background-color: {{backgroundSecondary}};
+    color: {{text}};
+}
+.sidebar-pane:backdrop {
+    background-color: {{backgroundSecondary}};
+}
+.sidebar-pane list,
+.sidebar-pane listview {
+    background-color: {{backgroundSecondary}};
+    color: {{text}};
+}
+.content-pane .sidebar-pane {
+    background-color: {{surfaceSecondary}};
+}
+
+/* ── Tabs (AdwTabBar / AdwTabView) ──────────────────────────────────────── */
+tabbar .box {
+    background-color: {{backgroundSecondary}};
+    color: {{text}};
+    box-shadow: none;
+}
+tabbar tab,
+dnd tab {
+    border-radius: 0;
+}
+tabbar tab:selected {
+    background-color: {{surface}};
+}
+tabbar tab:hover {
+    background-color: {{surfaceSecondary}};
+}
+tabthumbnail {
+    border-radius: 0;
+}
+tabthumbnail.pinned .card {
+    background-color: {{surface}};
+    color: {{text}};
+}
+
+/* ── Notebook (legacy tabs) ─────────────────────────────────────────────── */
+notebook > header {
+    background-color: {{backgroundSecondary}};
+    border-color: {{surfaceSecondary}};
+}
+notebook > header > tabs > tab {
+    color: {{textMuted}};
+    border-radius: 0;
+}
+notebook > header > tabs > tab:hover {
+    background-color: {{surface}};
+}
+notebook > header > tabs > tab:checked {
+    background-color: {{surfaceSecondary}};
+    color: {{text}};
+}
+notebook > stack {
+    background-color: {{background}};
+}
+
+/* ── Toolbar view / action bar / search bar ─────────────────────────────── */
+toolbarview > .top-bar,
+toolbarview > .bottom-bar {
+    background-color: {{backgroundSecondary}};
+    color: {{text}};
+}
+toolbarview > .top-bar.raised,
+toolbarview > .bottom-bar.raised {
+    background-color: {{backgroundSecondary}};
+}
+actionbar > revealer > box,
+searchbar > revealer > box {
+    background-color: {{background}};
+    color: {{text}};
+    box-shadow: none;
+}
+.toolbar,
+.toolbar.osd {
+    background-color: {{backgroundSecondary}};
+    border-radius: 0;
+}
+
+/* ── Status pages / preferences ──────────────────────────────────────────── */
+statuspage .icon {
+    color: {{textMuted}};
+}
+preferencesgroup > box {
+    color: {{text}};
+}
+preferencesgroup > box .title {
+    color: {{text}};
+}
+preferencesgroup > box .subtitle {
+    color: {{textSecondary}};
+}
+
+/* ── Calendar ───────────────────────────────────────────────────────────── */
+calendar {
+    background-color: {{background}};
+    color: {{text}};
+    border: 1px solid {{surfaceSecondary}};
+}
+calendar > header {
+    border-color: {{surfaceSecondary}};
+}
+calendar > grid > label.day-number:selected {
+    background-color: {{accent}};
+    color: {{background}};
+    border-radius: 0;
+}
+calendar > grid > label.day-number:checked {
+    background-color: {{surfaceSecondary}};
+    border-radius: 0;
+}
+
+/* ── Dialogs / messages ─────────────────────────────────────────────────── */
+window.messagedialog,
+dialog-host > dialog.alert sheet,
+window.dialog-window.alert {
+    background-color: {{surface}};
+    color: {{text}};
+    border-radius: 0;
+    box-shadow: none;
+}
+window.messagedialog .response-area > button.suggested {
+    color: {{accent}};
+}
+window.messagedialog .response-area > button.destructive {
+    color: {{danger}};
+}
+
+/* ── Banners / toasts / app notifications ───────────────────────────────── */
+banner > revealer > widget {
+    background-color: {{accent}};
+    color: {{background}};
+}
+toast {
+    background-color: {{backgroundDeep}};
+    color: {{text}};
+    border-radius: 0;
+}
+.app-notification {
+    background-color: {{backgroundDeep}};
+    color: {{text}};
+    border-radius: 0;
+}
+
+/* ── Separators / frames ────────────────────────────────────────────────── */
+separator {
+    background-color: {{surfaceSecondary}};
+}
+frame,
+.frame {
+    border: 1px solid {{surfaceSecondary}};
+    border-radius: 0;
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────── */
+spinner {
+    color: {{accent}};
+}
+
+/* ── Info / warning / error banners (GtkInfoBar) ────────────────────────── */
+infobar.info > revealer > box {
+    background-color: {{background}};
+    color: {{info}};
+}
+infobar.action > revealer > box,
+infobar.question > revealer > box {
+    background-color: {{accent}};
+    color: {{background}};
+}
+infobar.warning > revealer > box {
+    background-color: {{warning}};
+    color: {{backgroundDeep}};
+}
+infobar.error > revealer > box {
+    background-color: {{danger}};
+    color: {{background}};
+}
+
+/* ── Colorswatch / avatar (leave shape alone, theme colors only) ────────── */
+colorswatch.light > overlay {
+    box-shadow: inset 0 0 0 1px {{surfaceSecondary}};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Catch-all: force square corners across every remaining widget type
+ * that ships rounded by default in GTK4's built-in stylesheet.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+button,
+button.flat,
+button.circular,
+button.pill,
+button.card,
+button.osd,
+menubutton > button,
+splitbutton > button,
+splitbutton > separator,
+toggle-group,
+toggle-group > toggle,
+.card,
+.boxed-list,
+.boxed-list > row,
+list.content,
+list.content > row,
+list,
+list row,
+listview > row,
+entry,
+spinbutton,
+spinbutton > button,
+dropdown,
+dropdown > button,
+combobox > button,
+popover,
+popover > contents,
+popover > arrow,
+popover.menu,
+popover.background,
+menu,
+modelbutton,
+tooltip,
+tooltip.background,
+scale trough,
+scale > trough > slider,
+switch,
+switch > slider,
+check,
+radio,
+progressbar trough,
+progressbar progress,
+levelbar trough,
+headerbar,
+.titlebar,
+window.csd,
+window.csd decoration,
+dialog,
+dialog sheet,
+window.messagedialog,
+banner > revealer > widget,
+toast,
+.app-notification,
+frame,
+.frame,
+windowcontrols > button,
+tabbar tab,
+tabthumbnail,
+colorswatch,
+avatar {
+    border-radius: 0 !important;
+}
+
