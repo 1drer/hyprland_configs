@@ -1,0 +1,26 @@
+{
+  "label": "Kita",
+  "aliases": [
+    "kita"
+  ],
+  "colors": {
+    "background": "#12140e",
+    "backgroundSecondary": "#1a1c16",
+    "backgroundDeep": "#0d0f09",
+    "surface": "#1e201a",
+    "surfaceSecondary": "#282b24",
+    "surfaceTertiary": "#33362e",
+    "overlay": "#8f9285",
+    "overlaySecondary": "#44483d",
+    "overlayTertiary": "#c0cbac",
+    "text": "#e2e3d8",
+    "textSecondary": "#c5c8b9",
+    "textMuted": "#8f9285",
+    "accent": "#b3d089",
+    "accentSecondary": "#c0cbac",
+    "success": "#a6e3a1",
+    "warning": "#f9e2af",
+    "danger": "#ffb4ab",
+    "info": "#a0d0cb"
+  }
+}

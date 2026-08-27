@@ -54,9 +54,6 @@ Scope {
 
     // ═══════════════════════════════════════════════════════════════════
     // Picker Visual Configuration
-    //
-    // These are component-specific settings, NOT theme values.
-    // Colors and fonts come from ThemeManager.
     // ═══════════════════════════════════════════════════════════════════
 
     property int cardWidth:
@@ -393,8 +390,9 @@ Scope {
                 root.selectedIndex
             ]
 
+        // Do NOT close the picker here.
+        // applyProc.onExited() closes it after awww finishes.
         root.applyWallpaper(path)
-        root.closePicker()
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -455,10 +453,8 @@ Scope {
             "-c",
 
             "awww query 2>/dev/null | " +
-            "grep -oP " +
-            "'(?<=currently displaying: )\\S+|" +
-            "(?<=image: ).*' | " +
-            "head -n1"
+            "sed -n " +
+            "'s/.*currently displaying: image: //p'"
         ]
 
         stdout: StdioCollector {
@@ -468,6 +464,11 @@ Scope {
 
                 if (path.length === 0)
                     return
+
+                console.log(
+                    "WallpaperPicker: current wallpaper ->",
+                    path
+                )
 
                 root.currentWallpaper =
                     path
@@ -487,6 +488,20 @@ Scope {
     Process {
         id: applyProc
 
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const output =
+                    this.text.trim()
+
+                if (output.length > 0) {
+                    console.log(
+                        "WallpaperPicker: apply ->",
+                        output
+                    )
+                }
+            }
+        }
+
         stderr: StdioCollector {
             onStreamFinished: {
                 const error =
@@ -500,28 +515,43 @@ Scope {
                 }
             }
         }
+
+        onExited: {
+            console.log(
+                "WallpaperPicker: awww exited with code",
+                applyProc.exitCode
+            )
+
+            if (applyProc.exitCode === 0) {
+                root.closePicker()
+            }
+        }
     }
 
     function applyWallpaper(path) {
+        if (!path || path.length === 0) {
+            console.warn(
+                "WallpaperPicker: refusing to apply empty path"
+            )
+
+            return
+        }
+
+        console.log(
+            "WallpaperPicker: applying ->",
+            path
+        )
+
         applyProc.command = [
-            "bash",
-            "-c",
-
-            "pgrep -x awww-daemon >/dev/null || " +
-            "(awww-daemon & sleep 0.3); " +
-
-            "awww img " +
-
-            "\"" +
-            path.replace(
-                /(["\\$`])/g,
-                "\\$1"
-            ) +
-            "\" " +
-
-            "--transition-type wipe " +
-            "--transition-fps 60 " +
-            "--transition-duration 1"
+            "awww",
+            "img",
+            path,
+            "--transition-type",
+            "random",
+            "--transition-fps",
+            "60",
+            "--transition-duration",
+            "1"
         ]
 
         applyProc.running =
@@ -1499,9 +1529,6 @@ Scope {
 
     // ═══════════════════════════════════════════════════════════════════
     // Startup
-    //
-    // This component itself is now only created by the outer LazyLoader.
-    // When created, immediately open the picker.
     // ═══════════════════════════════════════════════════════════════════
 
     Component.onCompleted: {
