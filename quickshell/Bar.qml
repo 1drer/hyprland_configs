@@ -570,17 +570,17 @@ PanelWindow {
                             return ThemeManager.danger
 
                         if (pct <= 0.30)
-                            return ThemeManager.peach
+                            return ThemeManager.warning
 
                         return ThemeManager.accent
-                    }
+                      }
 
                     text:
-                        !bluetoothEnabled
-                            ? "Off"
-                            : connectedDevices > 0
-                                ? "BT: " + connectedDevices
-                                : "BT"
+                        battery.ready
+                            ? Math.round(
+                                battery.percentage * 100
+                            ) + "%"
+                            : "" 
 
                     color:
                         battery.ready
