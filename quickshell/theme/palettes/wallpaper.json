@@ -1,0 +1,27 @@
+{
+  "label": "Wallpaper (Auto)",
+  "aliases": [
+    "wallpaper",
+    "auto"
+  ],
+  "colors": {
+    "background": "#10131a",
+    "backgroundSecondary": "#161a24",
+    "backgroundDeep": "#0d0f16",
+    "surface": "#1b1f28",
+    "surfaceSecondary": "#242833",
+    "surfaceTertiary": "#2e333f",
+    "overlay": "#828ca5",
+    "overlaySecondary": "#3b4358",
+    "overlayTertiary": "#3f4554",
+    "text": "#e0e3eb",
+    "textSecondary": "#c1c6d4",
+    "textMuted": "#6b7794",
+    "accent": "#afc6ff",
+    "accentSecondary": "#bfc6dc",
+    "danger": "#ffb4ab",
+    "success": "#97d8af",
+    "warning": "#d8c897",
+    "info": "#97b4d8"
+  }
+}

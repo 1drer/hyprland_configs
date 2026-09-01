@@ -175,7 +175,6 @@ PanelWindow {
                         Hyprland.focusedWorkspace
 
                 visible: hasActiveWindow
-
                 color: ThemeManager.surface
 
                 implicitHeight:
@@ -195,7 +194,6 @@ PanelWindow {
                     }
 
                     width: 2
-
                     color: ThemeManager.accent
                 }
 
@@ -229,8 +227,7 @@ PanelWindow {
                     elide:
                         Text.ElideRight
 
-                    maximumLineCount:
-                        1
+                    maximumLineCount: 1
                 }
             }
         }
@@ -295,7 +292,6 @@ PanelWindow {
                     id: trayRow
 
                     spacing: 10
-
                     z: 2
 
                     Repeater {
@@ -469,11 +465,11 @@ PanelWindow {
                         ).length
 
                     text:
-                        !bluetoothEnabled
-                            ? "Off"
-                            : connectedDevices > 0
+                        bluetoothEnabled
+                            ? connectedDevices > 0
                                 ? "BT: " + connectedDevices
                                 : "BT"
+                            : "Off"
 
                     color:
                         connectedDevices
@@ -573,9 +569,6 @@ PanelWindow {
                         if (pct <= 0.10)
                             return ThemeManager.danger
 
-                        if (pct <= 0.20)
-                            return ThemeManager.warning
-
                         if (pct <= 0.30)
                             return ThemeManager.peach
 
@@ -583,11 +576,11 @@ PanelWindow {
                     }
 
                     text:
-                        battery.ready
-                            ? Math.round(
-                                battery.percentage * 100
-                            ) + "%"
-                            : ""
+                        !bluetoothEnabled
+                            ? "Off"
+                            : connectedDevices > 0
+                                ? "BT: " + connectedDevices
+                                : "BT"
 
                     color:
                         battery.ready

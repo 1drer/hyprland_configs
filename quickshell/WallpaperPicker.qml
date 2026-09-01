@@ -20,30 +20,22 @@
 //
 //   ↑                search -> focus search field
 //   ↓                search -> focus carousel
-
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-
 import "./theme"
-
 Scope {
     id: root
-
     // ═══════════════════════════════════════════════════════════════════
     // Signals
     // ═══════════════════════════════════════════════════════════════════
-
     signal pickerClosed()
-
     // ═══════════════════════════════════════════════════════════════════
     // Configuration
     // ═══════════════════════════════════════════════════════════════════
-
     property string wallpaperDir:
         "~/Pictures/Wallpapers"
-
     property var extensions: [
         "jpg",
         "jpeg",
@@ -51,105 +43,75 @@ Scope {
         "webp",
         "bmp"
     ]
-
     // ═══════════════════════════════════════════════════════════════════
     // Picker Visual Configuration
     // ═══════════════════════════════════════════════════════════════════
-
     property int cardWidth:
         230
-
     property int cardHeight:
         360
-
     property real cardSpacing:
         270
-
     property int visibleRadius:
         3
-
     property real selectedScale:
         1.14
-
     property int carouselDuration:
         280
-
     property int borderIdle:
         1
-
     property int borderCurrent:
         2
-
     property int borderSelected:
         3
-
     // ═══════════════════════════════════════════════════════════════════
     // State
     // ═══════════════════════════════════════════════════════════════════
-
     property bool pickerVisible:
         false
-
     property string currentWallpaper:
         ""
-
     property var wallpapers:
         []
-
     property string filterText:
         ""
-
     property int selectedIndex:
         0
-
     property bool searchActive:
         false
-
     property string searchFocusTarget:
         "input"
-
     property bool fullscreenActive:
         false
-
     property bool pathEditorActive:
         false
-
     property string pathEditorText:
         ""
-
     // ═══════════════════════════════════════════════════════════════════
     // Carousel Animation
     // ═══════════════════════════════════════════════════════════════════
-
     property real visualIndex:
         root.selectedIndex
-
     Behavior on visualIndex {
         NumberAnimation {
             duration:
                 root.carouselDuration
-
             easing.type:
                 Easing.OutCubic
         }
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Derived State
     // ═══════════════════════════════════════════════════════════════════
-
     readonly property bool browsingEnabled:
         !root.fullscreenActive &&
         !root.pathEditorActive
-
     readonly property bool pickerActionsEnabled:
         !root.searchActive &&
         !root.pathEditorActive &&
         !root.fullscreenActive
-
     readonly property bool hasWallpapers:
         root.filteredWallpapers.length > 0
-
     readonly property var filteredWallpapers:
         root.filterText.length === 0
             ? root.wallpapers
@@ -157,33 +119,26 @@ Scope {
                 root.wallpapers,
                 root.filterText
             )
-
     // ═══════════════════════════════════════════════════════════════════
     // Filtering
     // ═══════════════════════════════════════════════════════════════════
-
     function filterWallpapers(list, query) {
         const search =
             query.toLowerCase()
-
         return list.filter(
             path => path.toLowerCase().includes(search)
         )
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Selection
     // ═══════════════════════════════════════════════════════════════════
-
     function clampSelection() {
         const count =
             root.filteredWallpapers.length
-
         if (count === 0) {
             root.selectedIndex = 0
             return
         }
-
         root.selectedIndex =
             Math.max(
                 0,
@@ -193,41 +148,31 @@ Scope {
                 )
             )
     }
-
     onFilteredWallpapersChanged: {
         root.clampSelection()
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Navigation
     // ═══════════════════════════════════════════════════════════════════
-
     property real _lastMoveTime:
         0
-
     readonly property int navThrottleMs:
         45
-
     function moveSelection(delta) {
         const now =
             Date.now()
-
         if (
             now - root._lastMoveTime <
             root.navThrottleMs
         ) {
             return
         }
-
         root._lastMoveTime =
             now
-
         const count =
             root.filteredWallpapers.length
-
         if (count === 0)
             return
-
         root.selectedIndex =
             (
                 root.selectedIndex +
@@ -235,197 +180,149 @@ Scope {
                 count
             ) % count
     }
-
     function focusCurrentWallpaper() {
         if (!root.currentWallpaper) {
             root.selectedIndex = 0
             return
         }
-
         const index =
             root.filteredWallpapers.indexOf(
                 root.currentWallpaper
             )
-
         root.selectedIndex =
             index >= 0
                 ? index
                 : 0
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Picker State
     // ═══════════════════════════════════════════════════════════════════
-
     function resetPickerState() {
         root.searchActive =
             false
-
         root.pathEditorActive =
             false
-
         root.fullscreenActive =
             false
-
         root.searchFocusTarget =
             "input"
-
         root.filterText =
             ""
     }
-
     function openPicker() {
         root.resetPickerState()
-
         root.pickerVisible =
             true
-
         scanProc.running =
             true
-
         currentProc.running =
             true
     }
-
     function closePicker() {
         root.pickerVisible =
             false
-
         root.pickerClosed()
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Search
     // ═══════════════════════════════════════════════════════════════════
-
     function enterSearch() {
         root.pathEditorActive =
             false
-
         root.searchActive =
             true
-
         root.searchFocusTarget =
             "input"
     }
-
     function exitSearch() {
         const selectedPath =
             root.filteredWallpapers[
                 root.selectedIndex
             ]
-
         root.searchActive =
             false
-
         root.searchFocusTarget =
             "input"
-
         root.filterText =
             ""
-
         const index =
             selectedPath !== undefined
                 ? root.wallpapers.indexOf(
                     selectedPath
                 )
                 : -1
-
         root.selectedIndex =
             index >= 0
                 ? index
                 : 0
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Path Editor
     // ═══════════════════════════════════════════════════════════════════
-
     function enterPathEditor() {
         root.searchActive =
             false
-
         root.pathEditorActive =
             true
-
         root.pathEditorText =
             root.wallpaperDir
     }
-
     function applyPathEditor() {
         const path =
             root.pathEditorText.trim()
-
         if (!path)
             return
-
         root.wallpaperDir =
             path
-
         root.pathEditorActive =
             false
-
         scanProc.running =
             true
     }
-
     function cancelPathEditor() {
         root.pathEditorActive =
             false
-
         root.pathEditorText =
             root.wallpaperDir
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Wallpaper Selection
     // ═══════════════════════════════════════════════════════════════════
-
     function confirmSelection() {
         if (!root.hasWallpapers)
             return
-
         const path =
             root.filteredWallpapers[
                 root.selectedIndex
             ]
-
         // Do NOT close the picker here.
         // applyProc.onExited() closes it after awww finishes.
         root.applyWallpaper(path)
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Wallpaper Scan
     // ═══════════════════════════════════════════════════════════════════
-
     Process {
         id: scanProc
-
         command: [
             "bash",
             "-c",
-
             "dir=\"" +
             root.wallpaperDir.replace(
                 /^~/,
                 "$HOME"
             ) +
             "\"; " +
-
             "find \"$dir\" -maxdepth 1 -type f \\( " +
-
             root.extensions
                 .map(
                     e => "-iname '*." + e + "'"
                 )
                 .join(" -o ") +
-
             " \\) -printf '%T@ %p\\n' | " +
             "sort -rn | " +
             "cut -d' ' -f2-"
         ]
-
         stdout: StdioCollector {
             onStreamFinished: {
                 root.wallpapers =
@@ -435,64 +332,53 @@ Scope {
                             path =>
                                 path.trim().length > 0
                         )
-
                 root.focusCurrentWallpaper()
             }
         }
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Current Wallpaper — awww
     // ═══════════════════════════════════════════════════════════════════
-
     Process {
         id: currentProc
-
         command: [
             "bash",
             "-c",
-
             "awww query 2>/dev/null | " +
             "sed -n " +
             "'s/.*currently displaying: image: //p'"
         ]
-
         stdout: StdioCollector {
             onStreamFinished: {
                 const path =
                     this.text.trim()
-
                 if (path.length === 0)
                     return
-
                 console.log(
                     "WallpaperPicker: current wallpaper ->",
                     path
                 )
-
                 root.currentWallpaper =
                     path
-
                 root.focusCurrentWallpaper()
+                // Keep ThemeManager's Auto (matugen) mode in sync
+                // even if the wallpaper was changed outside the
+                // picker (e.g. by another tool) between sessions.
+                ThemeManager.onWallpaperChanged(path)
             }
         }
-
         running:
             false
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Apply Wallpaper
     // ═══════════════════════════════════════════════════════════════════
-
     Process {
         id: applyProc
-
         stdout: StdioCollector {
             onStreamFinished: {
                 const output =
                     this.text.trim()
-
                 if (output.length > 0) {
                     console.log(
                         "WallpaperPicker: apply ->",
@@ -501,12 +387,10 @@ Scope {
                 }
             }
         }
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const error =
                     this.text.trim()
-
                 if (error.length > 0) {
                     console.warn(
                         "WallpaperPicker: apply failed ->",
@@ -515,33 +399,27 @@ Scope {
                 }
             }
         }
-
         onExited: {
             console.log(
                 "WallpaperPicker: awww exited with code",
                 applyProc.exitCode
             )
-
             if (applyProc.exitCode === 0) {
                 root.closePicker()
             }
         }
     }
-
     function applyWallpaper(path) {
         if (!path || path.length === 0) {
             console.warn(
                 "WallpaperPicker: refusing to apply empty path"
             )
-
             return
         }
-
         console.log(
             "WallpaperPicker: applying ->",
             path
         )
-
         applyProc.command = [
             "awww",
             "img",
@@ -553,69 +431,54 @@ Scope {
             "--transition-duration",
             "1"
         ]
-
         applyProc.running =
             true
-
         root.currentWallpaper =
             path
+        // If Auto (matugen) mode is on, this regenerates the
+        // "wallpaper" palette and switches to it.
+        ThemeManager.onWallpaperChanged(path)
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Window
     // ═══════════════════════════════════════════════════════════════════
-
     LazyLoader {
         id: windowLoader
-
         active:
             root.pickerVisible
-
         PanelWindow {
             id: win
-
             implicitWidth:
                 1920
-
             implicitHeight:
                 1080
-
             color:
                 "transparent"
-
             focusable:
                 true
-
             anchors {
                 top: true
                 bottom: true
                 left: true
                 right: true
             }
-
             // ══════════════════════════════════════════════════════════
             // Backdrop
             // ══════════════════════════════════════════════════════════
-
             Rectangle {
                 anchors.fill:
                     parent
-
                 color:
                     "#000000"
-
                 opacity:
                     0.00
             }
-
             // ══════════════════════════════════════════════════════════
             // Keyboard Shortcuts
             // ══════════════════════════════════════════════════════════
-
             Shortcut {
                 sequence:
                     "Escape"
-
                 onActivated: {
                     if (root.fullscreenActive) {
                         root.fullscreenActive =
@@ -633,30 +496,25 @@ Scope {
                     }
                 }
             }
-
             Shortcut {
                 sequence:
                     "F"
-
                 enabled:
                     root.fullscreenActive ||
                     (
                         root.pickerActionsEnabled &&
                         root.hasWallpapers
                     )
-
                 onActivated: {
                     root.fullscreenActive =
                         !root.fullscreenActive
                 }
             }
-
             Shortcut {
                 sequences: [
                     "Return",
                     "Enter"
                 ]
-
                 enabled:
                     !root.pathEditorActive &&
                     !root.fullscreenActive &&
@@ -666,18 +524,15 @@ Scope {
                         root.searchFocusTarget ===
                         "input"
                     )
-
                 onActivated: {
                     root.confirmSelection()
                 }
             }
-
             Shortcut {
                 sequences: [
                     "Left",
                     "H"
                 ]
-
                 enabled:
                     root.browsingEnabled &&
                     (
@@ -685,18 +540,15 @@ Scope {
                         root.searchFocusTarget ===
                         "list"
                     )
-
                 onActivated: {
                     root.moveSelection(-1)
                 }
             }
-
             Shortcut {
                 sequences: [
                     "Right",
                     "L"
                 ]
-
                 enabled:
                     root.browsingEnabled &&
                     (
@@ -704,267 +556,198 @@ Scope {
                         root.searchFocusTarget ===
                         "list"
                     )
-
                 onActivated: {
                     root.moveSelection(1)
                 }
             }
-
             Shortcut {
                 sequence:
                     "S"
-
                 enabled:
                     root.pickerActionsEnabled
-
                 onActivated: {
                     root.enterSearch()
                 }
             }
-
             Shortcut {
                 sequence:
                     "P"
-
                 enabled:
                     root.pickerActionsEnabled
-
                 onActivated: {
                     root.enterPathEditor()
                 }
             }
-
             Shortcut {
                 sequence:
                     "R"
-
                 enabled:
                     root.pickerActionsEnabled
-
                 onActivated: {
                     scanProc.running =
                         true
                 }
             }
-
             Shortcut {
                 sequence:
                     "Up"
-
                 enabled:
                     root.searchActive
-
                 onActivated: {
                     root.searchFocusTarget =
                         "input"
                 }
             }
-
             Shortcut {
                 sequence:
                     "Down"
-
                 enabled:
                     root.searchActive
-
                 onActivated: {
                     root.searchFocusTarget =
                         "list"
                 }
             }
-
             // ══════════════════════════════════════════════════════════
             // Content
             // ══════════════════════════════════════════════════════════
-
             Item {
                 id: content
-
                 anchors.fill:
                     parent
-
                 readonly property int headerHeight:
                     74
-
                 // ══════════════════════════════════════════════════════
                 // Filmstrip
                 // ══════════════════════════════════════════════════════
-
                 Item {
                     id: filmstrip
-
                     anchors {
                         top:
                             parent.top
-
                         topMargin:
                             content.headerHeight
-
                         left:
                             parent.left
-
                         right:
                             parent.right
-
                         bottom:
                             parent.bottom
                     }
-
                     clip:
                         true
-
                     readonly property real centerX:
                         width / 2
-
                     readonly property real centerY:
                         height / 2
-
                     // ──────────────────────────────────────────────────
                     // Search Dimming
                     // ──────────────────────────────────────────────────
-
                     opacity:
                         root.searchActive &&
                         root.searchFocusTarget ===
                         "input"
                             ? 0.35
                             : 1.0
-
                     Behavior on opacity {
                         NumberAnimation {
                             duration:
                                 160
-
                             easing.type:
                                 Easing.OutCubic
                         }
                     }
-
                     // ──────────────────────────────────────────────────
                     // Empty State
                     // ──────────────────────────────────────────────────
-
                     Column {
                         anchors.centerIn:
                             parent
-
                         visible:
                             root.wallpapers.length === 0
-
                         spacing:
                             6
-
                         Text {
                             anchors.horizontalCenter:
                                 parent.horizontalCenter
-
                             text:
                                 "No wallpapers found"
-
                             color:
                                 ThemeManager.textMuted
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontLarge
-
                             font.weight:
                                 ThemeManager.fontMedium
                         }
-
                         Text {
                             anchors.horizontalCenter:
                                 parent.horizontalCenter
-
                             text:
                                 root.wallpaperDir
-
                             color:
                                 ThemeManager.overlay
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontSmall
-
                             font.weight:
                                 ThemeManager.fontRegular
                         }
                     }
-
                     // ──────────────────────────────────────────────────
                     // No Matches
                     // ──────────────────────────────────────────────────
-
                     Text {
                         anchors.centerIn:
                             parent
-
                         visible:
                             root.wallpapers.length > 0 &&
                             root.filteredWallpapers.length === 0
-
                         text:
                             "No matches for \u201c" +
                             root.filterText +
                             "\u201d"
-
                         color:
                             ThemeManager.textMuted
-
                         font.family:
                             ThemeManager.fontFamily
-
                         font.pixelSize:
                             ThemeManager.fontNormal
-
                         font.weight:
                             ThemeManager.fontRegular
                     }
-
                     // ══════════════════════════════════════════════════
                     // Wallpaper Cards
                     // ══════════════════════════════════════════════════
-
                     Repeater {
                         model:
                             root.filteredWallpapers
-
                         delegate: Item {
                             id: card
-
                             required property int index
                             required property string modelData
-
                             readonly property real distance:
                                 index -
                                 root.visualIndex
-
                             readonly property real absDistance:
                                 Math.abs(distance)
-
                             readonly property bool isSelected:
                                 index ===
                                 root.selectedIndex
-
                             readonly property bool isCurrent:
                                 modelData ===
                                 root.currentWallpaper
-
                             readonly property bool nearby:
                                 absDistance <=
                                 root.visibleRadius +
                                 0.5
-
                             readonly property real centerInfluence:
                                 Math.max(
                                     0,
                                     1 - absDistance
                                 )
-
                             readonly property real visualScale:
                                 1 +
                                 (
@@ -972,13 +755,10 @@ Scope {
                                     1
                                 ) *
                                 centerInfluence
-
                             width:
                                 root.cardWidth
-
                             height:
                                 root.cardHeight
-
                             x:
                                 filmstrip.centerX -
                                 width / 2 +
@@ -986,14 +766,11 @@ Scope {
                                     distance *
                                     root.cardSpacing
                                 )
-
                             y:
                                 filmstrip.centerY -
                                 height / 2
-
                             visible:
                                 nearby
-
                             z:
                                 1000 -
                                 absDistance +
@@ -1002,7 +779,6 @@ Scope {
                                         ? 500
                                         : 0
                                 )
-
                             opacity:
                                 nearby
                                     ? Math.max(
@@ -1012,48 +788,35 @@ Scope {
                                         0.16
                                     )
                                     : 0
-
                             // ══════════════════════════════════════════
                             // Card Visual
                             // ══════════════════════════════════════════
-
                             Item {
                                 id: cardVisual
-
                                 anchors.centerIn:
                                     parent
-
                                 width:
                                     root.cardWidth
-
                                 height:
                                     root.cardHeight
-
                                 scale:
                                     card.visualScale
-
                                 // ──────────────────────────────────────
                                 // Background
                                 // ──────────────────────────────────────
-
                                 Rectangle {
                                     anchors.fill:
                                         parent
-
                                     color:
                                         ThemeManager.surface
                                 }
-
                                 // ──────────────────────────────────────
                                 // Thumbnail
                                 // ──────────────────────────────────────
-
                                 Image {
                                     id: thumb
-
                                     anchors.fill:
                                         parent
-
                                     source:
                                         card.nearby
                                             ? (
@@ -1061,67 +824,51 @@ Scope {
                                                 card.modelData
                                               )
                                             : ""
-
                                     fillMode:
                                         Image.PreserveAspectCrop
-
                                     asynchronous:
                                         true
-
                                     cache:
                                         true
-
                                     sourceSize {
                                         width:
                                             root.cardWidth *
                                             1.6
-
                                         height:
                                             root.cardHeight *
                                             1.6
                                     }
-
                                     Rectangle {
                                         anchors.fill:
                                             parent
-
                                         visible:
                                             thumb.status !==
                                             Image.Ready
-
                                         color:
                                             ThemeManager.backgroundDeep
                                     }
                                 }
-
                                 // ──────────────────────────────────────
                                 // Non-selected Overlay
                                 // ──────────────────────────────────────
-
                                 Rectangle {
                                     anchors.fill:
                                         parent
-
                                     color:
                                         ThemeManager.backgroundDeep
-
                                     opacity:
                                         card.isSelected
                                             ? 0
                                             : 0.28
                                 }
-
                                 // ──────────────────────────────────────
                                 // Border
                                 // ──────────────────────────────────────
-
                                 Rectangle {
                                     anchors.fill:
                                         parent
-
                                     color:
                                         "transparent"
-
                                     border.width:
                                         card.isSelected
                                             ? root.borderSelected
@@ -1130,7 +877,6 @@ Scope {
                                                     ? root.borderCurrent
                                                     : root.borderIdle
                                               )
-
                                     border.color:
                                         card.isSelected
                                             ? ThemeManager.accent
@@ -1149,124 +895,90 @@ Scope {
                         }
                     }
                 }
-
                 // ══════════════════════════════════════════════════════
                 // Search Bar
                 // ══════════════════════════════════════════════════════
-
                 Rectangle {
                     id: searchOverlay
-
                     anchors {
                         horizontalCenter:
                             parent.horizontalCenter
-
                         top:
                             parent.top
-
                         topMargin:
                             26
                     }
-
                     width:
                         460
-
                     height:
                         48
-
                     visible:
                         root.searchActive
-
                     z:
                         10000
-
                     color:
                         ThemeManager.backgroundSecondary
-
                     border.width:
                         root.searchFocusTarget ===
                         "input"
                             ? 2
                             : 1
-
                     border.color:
                         root.searchFocusTarget ===
                         "input"
                             ? ThemeManager.accent
                             : ThemeManager.surfaceSecondary
-
                     RowLayout {
                         anchors {
                             fill:
                                 parent
-
                             leftMargin:
                                 16
-
                             rightMargin:
                                 16
                         }
-
                         spacing:
                             10
-
                         Text {
                             text:
                                 "Search"
-
                             color:
                                 ThemeManager.textMuted
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontNormal
-
                             font.weight:
                                 ThemeManager.fontMedium
                         }
-
                         TextInput {
                             id: searchInput
-
                             Layout.fillWidth:
                                 true
-
                             verticalAlignment:
                                 TextInput.AlignVCenter
-
                             color:
                                 ThemeManager.text
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontNormal
-
                             font.weight:
                                 ThemeManager.fontRegular
-
                             clip:
                                 true
-
                             focus:
                                 root.searchActive &&
                                 root.searchFocusTarget ===
                                 "input"
-
                             cursorVisible:
                                 activeFocus
-
                             selectByMouse:
                                 true
-
                             onTextChanged: {
                                 root.filterText =
                                     text
                             }
-
                             Keys.onPressed: (event) => {
                                 switch (event.key) {
                                 case Qt.Key_Escape:
@@ -1274,7 +986,6 @@ Scope {
                                     event.accepted =
                                         true
                                     break
-
                                 case Qt.Key_Return:
                                 case Qt.Key_Enter:
                                     root.searchFocusTarget =
@@ -1282,14 +993,12 @@ Scope {
                                     event.accepted =
                                         true
                                     break
-
                                 case Qt.Key_Up:
                                     root.searchFocusTarget =
                                         "input"
                                     event.accepted =
                                         true
                                     break
-
                                 case Qt.Key_Down:
                                     root.searchFocusTarget =
                                         "list"
@@ -1301,114 +1010,80 @@ Scope {
                         }
                     }
                 }
-
                 // ══════════════════════════════════════════════════════
                 // Path Editor
                 // ══════════════════════════════════════════════════════
-
                 Rectangle {
                     id: pathOverlay
-
                     anchors {
                         horizontalCenter:
                             parent.horizontalCenter
-
                         top:
                             parent.top
-
                         topMargin:
                             26
                     }
-
                     width:
                         620
-
                     height:
                         48
-
                     visible:
                         root.pathEditorActive
-
                     z:
                         10000
-
                     color:
                         ThemeManager.backgroundSecondary
-
                     border.width:
                         2
-
                     border.color:
                         ThemeManager.accent
-
                     RowLayout {
                         anchors {
                             fill:
                                 parent
-
                             leftMargin:
                                 16
-
                             rightMargin:
                                 16
                         }
-
                         spacing:
                             10
-
                         Text {
                             text:
                                 "Path"
-
                             color:
                                 ThemeManager.textMuted
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontNormal
-
                             font.weight:
                                 ThemeManager.fontMedium
                         }
-
                         TextInput {
                             id: pathInput
-
                             Layout.fillWidth:
                                 true
-
                             verticalAlignment:
                                 TextInput.AlignVCenter
-
                             color:
                                 ThemeManager.text
-
                             font.family:
                                 ThemeManager.fontFamily
-
                             font.pixelSize:
                                 ThemeManager.fontNormal
-
                             font.weight:
                                 ThemeManager.fontRegular
-
                             clip:
                                 true
-
                             focus:
                                 root.pathEditorActive
-
                             cursorVisible:
                                 activeFocus
-
                             selectByMouse:
                                 true
-
                             text:
                                 root.pathEditorText
-
                             onTextChanged: {
                                 if (
                                     root.pathEditorActive
@@ -1417,7 +1092,6 @@ Scope {
                                         text
                                 }
                             }
-
                             Keys.onPressed: (event) => {
                                 switch (event.key) {
                                 case Qt.Key_Return:
@@ -1426,7 +1100,6 @@ Scope {
                                     event.accepted =
                                         true
                                     break
-
                                 case Qt.Key_Escape:
                                     root.cancelPathEditor()
                                     event.accepted =
@@ -1437,29 +1110,21 @@ Scope {
                         }
                     }
                 }
-
                 // ══════════════════════════════════════════════════════
                 // Fullscreen Preview
                 // ══════════════════════════════════════════════════════
-
                 Item {
                     id: fullscreenOverlay
-
                     anchors.fill:
                         parent
-
                     visible:
                         root.fullscreenActive
-
                     z:
                         20000
-
                     Image {
                         id: fullscreenImage
-
                         anchors.centerIn:
                             parent
-
                         property real imageAspectRatio:
                             sourceSize.width > 0 &&
                             sourceSize.height > 0
@@ -1468,7 +1133,6 @@ Scope {
                                     sourceSize.height
                                   )
                                 : 16 / 9
-
                         width:
                             Math.min(
                                 parent.width - 48,
@@ -1477,7 +1141,6 @@ Scope {
                                 ) *
                                 imageAspectRatio
                             )
-
                         height:
                             Math.min(
                                 parent.height - 48,
@@ -1486,13 +1149,10 @@ Scope {
                                 ) /
                                 imageAspectRatio
                             )
-
                         fillMode:
                             Image.PreserveAspectFit
-
                         asynchronous:
                             true
-
                         source:
                             root.fullscreenActive &&
                             root.hasWallpapers
@@ -1503,20 +1163,15 @@ Scope {
                                     ]
                                   )
                                 : ""
-
                         Rectangle {
                             anchors.fill:
                                 parent
-
                             color:
                                 "transparent"
-
                             border.width:
                                 3
-
                             border.color:
                                 ThemeManager.accent
-
                             visible:
                                 fullscreenImage.status ===
                                 Image.Ready
@@ -1526,11 +1181,9 @@ Scope {
             }
         }
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // Startup
     // ═══════════════════════════════════════════════════════════════════
-
     Component.onCompleted: {
         root.openPicker()
     }

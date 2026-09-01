@@ -21,6 +21,11 @@ def reload_all():
         "hyprctl",
         "reload",
     ])
+    run ([
+        "pkill",
+        "-SIGUSR2",
+        "hyprlock"
+    ])
 
     run([
         "dunstctl",

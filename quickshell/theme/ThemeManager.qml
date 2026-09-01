@@ -1,133 +1,104 @@
 pragma Singleton
-
 import QtQuick
 import Quickshell.Io
-
 QtObject {
     id: manager
-
     // ═════════════════════════════════════════════
     // Palette state
     // ═════════════════════════════════════════════
-
     property string paletteDir:
         "~/.config/quickshell/theme/palettes"
-
     property string currentTheme: "mocha"
-
     property var palettes: ({})
     property var paletteNames: []
     property var themeAliases: ({})
-
+    // ═════════════════════════════════════════════
+    // Matugen "Auto" state
+    // ═════════════════════════════════════════════
+    // Auto is a pinned, non-deletable entry in paletteNames (always
+    // index 0), backed by palettes/wallpaper.json. It's "on" simply
+    // by being the selected theme (currentTheme === "auto").
+    property string lastWallpaperPath: ""
+    property bool _initialSyncDone: false
+    readonly property bool isAutoActive:
+        currentTheme === "auto"
     readonly property var palette:
         palettes[currentTheme]
             ? palettes[currentTheme].colors
             : {}
-
     // ═════════════════════════════════════════════
     // Color lookup
     // ═════════════════════════════════════════════
-
     function colorFor(themeKey, role) {
         const entry = palettes[themeKey]
-
         if (!entry || !entry.colors)
             return "#808080"
-
         return entry.colors[role] || "#808080"
     }
-
     function _c(role) {
         return colorFor(currentTheme, role)
     }
-
     // ═════════════════════════════════════════════
     // Semantic colors
     // ═════════════════════════════════════════════
-
     readonly property color background:
         _c("background")
-
     readonly property color backgroundSecondary:
         _c("backgroundSecondary")
-
     readonly property color backgroundDeep:
         _c("backgroundDeep")
-
     readonly property color surface:
         _c("surface")
-
     readonly property color surfaceSecondary:
         _c("surfaceSecondary")
-
     readonly property color surfaceTertiary:
         _c("surfaceTertiary")
-
     readonly property color overlay:
         _c("overlay")
-
     readonly property color overlaySecondary:
         _c("overlaySecondary")
-
     readonly property color overlayTertiary:
         _c("overlayTertiary")
-
     readonly property color text:
         _c("text")
-
     readonly property color textSecondary:
         _c("textSecondary")
-
     readonly property color textMuted:
         _c("textMuted")
-
     readonly property color accent:
         _c("accent")
-
     readonly property color accentSecondary:
         _c("accentSecondary")
-
     readonly property color success:
         _c("success")
-
     readonly property color warning:
         _c("warning")
-
     readonly property color danger:
         _c("danger")
-
     readonly property color info:
         _c("info")
-
     // ═════════════════════════════════════════════
     // Typography
     // ═════════════════════════════════════════════
-
     property string fontFamily:
         "JetBrainsMono Nerd Font"
-
     property int fontTiny: 10
     property int fontSmall: 11
     property int fontNormal: 13
     property int fontLarge: 15
     property int fontTitle: 18
-
     property int fontRegular: 400
     property int fontMedium: 500
     property int fontBold: 700
     property int fontHeavy: 800
-
     // ═════════════════════════════════════════════
     // Persistent current theme
     // ═════════════════════════════════════════════
-
     property Process saveCurrentProc: Process {
         id: saveCurrentProc
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err = this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: saveCurrentTheme failed ->",
@@ -136,11 +107,9 @@ QtObject {
             }
         }
     }
-
     function saveCurrentTheme() {
         const dir =
             paletteDir.replace(/^~/, "$HOME")
-
         saveCurrentProc.command = [
             "bash",
             "-c",
@@ -152,36 +121,28 @@ QtObject {
             "bash",
             currentTheme
         ]
-
         saveCurrentProc.running = true
     }
-
     property Process loadCurrentProc: Process {
         id: loadCurrentProc
-
         stdout: StdioCollector {
             onStreamFinished: {
                 const saved =
                     this.text.trim().toLowerCase()
-
                 if (!saved)
                     return
-
                 if (manager.themeAliases[saved]) {
                     manager.currentTheme =
                         manager.themeAliases[saved]
-
                     manager.applyExternalTheme(
                         manager.currentTheme
                     )
                 }
             }
         }
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err = this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: loadCurrentTheme failed ->",
@@ -190,11 +151,9 @@ QtObject {
             }
         }
     }
-
     function loadCurrentTheme() {
         const dir =
             paletteDir.replace(/^~/, "$HOME")
-
         loadCurrentProc.command = [
             "bash",
             "-c",
@@ -204,21 +163,16 @@ QtObject {
             dir +
             "/current\"; fi"
         ]
-
         loadCurrentProc.running = true
     }
-
     // ═════════════════════════════════════════════
     // Theme switching
     // ═════════════════════════════════════════════
-
     function setTheme(name) {
         const normalized =
             String(name).toLowerCase()
-
         const key =
             themeAliases[normalized]
-
         if (!key) {
             console.warn(
                 "ThemeManager: unknown theme:",
@@ -226,37 +180,40 @@ QtObject {
             )
             return
         }
-
         currentTheme = key
-
-        applyExternalTheme(key)
         saveCurrentTheme()
+        if (key === "auto") {
+            // Apply whatever Auto colors we already have (if any)
+            // immediately so there's no flash of the wrong theme,
+            // then refresh from the current wallpaper in case it's
+            // stale (e.g. wallpaper changed while Auto wasn't active).
+            if (palettes["auto"] && palettes["auto"].path) {
+                applyExternalTheme("auto")
+            }
+            if (lastWallpaperPath) {
+                regenerateFromWallpaper(lastWallpaperPath)
+            } else {
+                discoverWallpaperProc.running = true
+            }
+        } else {
+            applyExternalTheme(key)
+        }
     }
-
     function nextTheme() {
         if (paletteNames.length === 0)
             return
-
         const index =
             paletteNames.indexOf(currentTheme)
-
         const nextIndex =
             index < 0
                 ? 0
                 : (index + 1) %
                   paletteNames.length
-
-        currentTheme =
-            paletteNames[nextIndex]
-
-        applyExternalTheme(currentTheme)
-        saveCurrentTheme()
+        setTheme(paletteNames[nextIndex])
     }
-
     // ═════════════════════════════════════════════
     // Palette parsing
     // ═════════════════════════════════════════════
-
     function parsePalette(filePath, parsed) {
         const stem =
             filePath
@@ -267,61 +224,45 @@ QtObject {
                     ""
                 )
                 .toLowerCase()
-
         let aliases =
             parsed.aliases ?? []
-
         if (!Array.isArray(aliases))
             aliases = [aliases]
-
         aliases =
             aliases.map(
                 alias =>
                     String(alias).toLowerCase()
             )
-
         if (!aliases.includes(stem))
             aliases.unshift(stem)
-
         return {
             label:
                 parsed.label || stem,
-
             aliases:
                 aliases,
-
             colors:
                 parsed.colors || {},
-
             path:
                 filePath
         }
     }
-
     // ═════════════════════════════════════════════
     // Palette scanning
     // ═════════════════════════════════════════════
-
     function rescanPalettes() {
         scanProc.running = true
     }
-
     function setPaletteDir(path) {
         const trimmed =
             path.trim()
-
         if (!trimmed)
             return
-
         paletteDir =
             trimmed
-
         rescanPalettes()
     }
-
     property Process scanProc: Process {
         id: scanProc
-
         command: [
             "bash",
             "-c",
@@ -331,40 +272,30 @@ QtObject {
                 "$HOME"
             ) +
             "\"; " +
-
             "for f in \"$dir\"/*.json; do " +
             "[ -f \"$f\" ] || continue; " +
-
             "echo \"__QUICKSHELL_PALETTE__ $f\"; " +
             "cat \"$f\"; " +
             "echo; " +
-
             "done"
         ]
-
         stdout: StdioCollector {
             onStreamFinished: {
                 const chunks =
                     this.text.split(
                         "__QUICKSHELL_PALETTE__ "
                     )
-
                 const found = {}
                 const aliases = {}
-
                 for (const chunk of chunks) {
                     const trimmed =
                         chunk.trim()
-
                     if (!trimmed)
                         continue
-
                     const newline =
                         trimmed.indexOf("\n")
-
                     if (newline === -1)
                         continue
-
                     const filePath =
                         trimmed
                             .slice(
@@ -372,15 +303,12 @@ QtObject {
                                 newline
                             )
                             .trim()
-
                     const jsonText =
                         trimmed
                             .slice(
                                 newline + 1
                             )
-
                     let parsed
-
                     try {
                         parsed =
                             JSON.parse(
@@ -394,13 +322,11 @@ QtObject {
                         )
                         continue
                     }
-
                     const entry =
                         manager.parsePalette(
                             filePath,
                             parsed
                         )
-
                     const stem =
                         filePath
                             .split("/")
@@ -410,10 +336,8 @@ QtObject {
                                 ""
                             )
                             .toLowerCase()
-
                     found[stem] =
                         entry
-
                     for (
                         const alias
                         of entry.aliases
@@ -422,38 +346,68 @@ QtObject {
                             stem
                     }
                 }
+                // Pin a synthetic, non-deletable "Auto (Wallpaper)"
+                // entry at the top of the list. It's backed by
+                // palettes/wallpaper.json (written by
+                // matugen-wallpaper.py) but is never shown, edited,
+                // or deleted as an ordinary "wallpaper" theme.
+                if (found["wallpaper"]) {
+                    found["auto"] = {
+                        label: "Auto (Wallpaper)",
+                        aliases: ["auto", "wallpaper"],
+                        colors: found["wallpaper"].colors,
+                        path: found["wallpaper"].path
+                    }
+                } else if (!found["auto"]) {
+                    found["auto"] = {
+                        label: "Auto (Wallpaper)",
+                        aliases: ["auto", "wallpaper"],
+                        colors: {},
+                        path: null
+                    }
+                }
+                delete found["wallpaper"]
+                aliases["auto"] = "auto"
+                aliases["wallpaper"] = "auto"
 
                 manager.palettes =
                     found
-
                 manager.themeAliases =
                     aliases
-
-                manager.paletteNames =
-                    Object.keys(found).sort()
-
-                if (
-                    manager.paletteNames.length > 0 &&
-                    !found[
-                        manager.currentTheme
-                    ]
-                ) {
+                manager.paletteNames = [
+                    "auto",
+                    ...Object.keys(found)
+                        .filter(k => k !== "auto")
+                        .sort()
+                ]
+                if (!found[manager.currentTheme]) {
                     manager.currentTheme =
                         manager.paletteNames[0]
                 }
-
+                // First run ever: Auto has no wallpaper.json yet.
+                // Generate one right away so Auto isn't just gray.
+                if (
+                    !manager._initialSyncDone &&
+                    manager.currentTheme === "auto" &&
+                    !found["auto"].path
+                ) {
+                    if (manager.lastWallpaperPath)
+                        manager.regenerateFromWallpaper(
+                            manager.lastWallpaperPath
+                        )
+                    else
+                        manager.discoverWallpaperProc.running = true
+                }
+                manager._initialSyncDone = true
                 // Now that aliases are known,
                 // restore the persisted theme.
-
                 manager.loadCurrentTheme()
             }
         }
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err =
                     this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: scan failed ->",
@@ -462,41 +416,31 @@ QtObject {
             }
         }
     }
-
     Component.onCompleted:
         rescanPalettes()
-
     // ═════════════════════════════════════════════
     // Switcher visibility
     // ═════════════════════════════════════════════
-
     property bool switcherVisible: false
-
     function toggleSwitcher() {
         switcherVisible =
             !switcherVisible
     }
-
     function showSwitcher() {
         switcherVisible = true
     }
-
     function hideSwitcher() {
         switcherVisible = false
     }
-
     // ═════════════════════════════════════════════
     // External theming
     // ═════════════════════════════════════════════
-
     property Process applyExternalProc: Process {
         id: applyExternalProc
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err =
                     this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: apply-theme failed ->",
@@ -505,34 +449,27 @@ QtObject {
             }
         }
     }
-
     function applyExternalTheme(themeKey) {
         console.log(
             "ThemeManager: applyExternalTheme called with",
             themeKey
         )
-
         const entry =
             palettes[themeKey]
-
         if (!entry || !entry.path)
             return
-
         const dir =
             paletteDir.replace(
                 /^~/,
                 "$HOME"
             )
-
         const scriptPath =
             dir + "/../apply-theme.py"
-
         const escapedEntryPath =
             entry.path.replace(
                 /(["\\$`])/g,
                 "\\$1"
             )
-
         applyExternalProc.command = [
             "bash",
             "-c",
@@ -542,25 +479,103 @@ QtObject {
             escapedEntryPath +
             "\""
         ]
-
         applyExternalProc.running = true
     }
-
+    // ═════════════════════════════════════════════
+    // Matugen (Auto entry, driven by wallpaper changes)
+    // ═════════════════════════════════════════════
+    // Called by WallpaperPicker every time the wallpaper changes
+    // (both on manual apply and on initial detection at startup).
+    // This is the only thing the user needs to do - no refresh, no
+    // manual regenerate step.
+    function onWallpaperChanged(path) {
+        if (!path || path === lastWallpaperPath)
+            return
+        lastWallpaperPath = path
+        if (currentTheme === "auto")
+            regenerateFromWallpaper(path)
+    }
+    function regenerateFromWallpaper(path) {
+        if (!path)
+            return
+        const dir =
+            paletteDir.replace(/^~/, "$HOME")
+        const scriptPath =
+            dir + "/../matugen-wallpaper.py"
+        const escapedPath =
+            path.replace(/(["\\$`])/g, "\\$1")
+        matugenProc.command = [
+            "bash",
+            "-c",
+            "python3 \"" +
+            scriptPath +
+            "\" \"" +
+            escapedPath +
+            "\""
+        ]
+        matugenProc.running = true
+    }
+    property Process matugenProc: Process {
+        id: matugenProc
+        // NOTE: matugenProc.exitCode is unreliable on this Quickshell
+        // version (observed "undefined" in onExited even on success),
+        // so success is detected from the script's own stdout instead
+        // of the exit code.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = this.text.trim()
+                if (out.length > 0)
+                    console.log("ThemeManager: matugen ->", out)
+                if (out.indexOf("wrote ") !== -1) {
+                    // Re-reads wallpaper.json (fresh colors) into the
+                    // "auto" entry, updates every ThemeManager.* color
+                    // binding shell-wide, and reapplies the external
+                    // theme (kitty/gtk/rofi/etc.) via loadCurrentTheme.
+                    manager.rescanPalettes()
+                } else {
+                    console.warn(
+                        "ThemeManager: matugen produced no output - " +
+                        "check stderr below for the real error"
+                    )
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                const err = this.text.trim()
+                if (err.length > 0)
+                    console.warn("ThemeManager: matugen ->", err)
+            }
+        }
+    }
+    property Process discoverWallpaperProc: Process {
+        id: discoverWallpaperProc
+        command: [
+            "bash",
+            "-c",
+            "awww query 2>/dev/null | " +
+            "sed -n 's/.*currently displaying: image: //p'"
+        ]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const path = this.text.trim()
+                if (path.length > 0)
+                    manager.onWallpaperChanged(path)
+            }
+        }
+    }
     // ═════════════════════════════════════════════
     // Palette file operations
     // ═════════════════════════════════════════════
-
     property Process savePaletteProc: Process {
         id: savePaletteProc
-
         onExited:
             manager.rescanPalettes()
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err =
                     this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: savePalette failed ->",
@@ -569,7 +584,6 @@ QtObject {
             }
         }
     }
-
     function savePaletteFile(
         path,
         contents
@@ -582,17 +596,20 @@ QtObject {
             path,
             contents
         ]
-
         savePaletteProc.running = true
     }
-
     function savePalette(
         themeKey,
         contents
     ) {
+        if (themeKey === "auto") {
+            console.warn(
+                "ThemeManager: Auto cannot be edited"
+            )
+            return false
+        }
         const entry =
             palettes[themeKey]
-
         if (!entry || !entry.path) {
             console.warn(
                 "ThemeManager: no palette path for",
@@ -600,22 +617,18 @@ QtObject {
             )
             return false
         }
-
         savePaletteFile(
             entry.path,
             contents
         )
-
         return true
     }
-
     function saveNewPalette(
         rawName,
         contents
     ) {
         const label =
             String(rawName).trim()
-
         const slug =
             label
                 .toLowerCase()
@@ -627,20 +640,17 @@ QtObject {
                     /^-+|-+$/g,
                     ""
                 )
-
-        if (!slug) {
+        if (!slug || slug === "auto" || slug === "wallpaper") {
             console.warn(
-                "ThemeManager: invalid theme name"
+                "ThemeManager: '" + slug + "' is a reserved theme name"
             )
             return false
         }
-
         const dir =
             paletteDir.replace(
                 /^~/,
                 "$HOME"
             )
-
         saveNewProc.command = [
             "bash",
             "-c",
@@ -654,23 +664,17 @@ QtObject {
             "bash",
             contents
         ]
-
         saveNewProc.running = true
-
         return true
     }
-
     property Process saveNewProc: Process {
         id: saveNewProc
-
         onExited:
             manager.rescanPalettes()
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err =
                     this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: saveNewPalette failed ->",
@@ -679,11 +683,11 @@ QtObject {
             }
         }
     }
-
     function editPalette(themeKey) {
+        if (themeKey === "auto")
+            return ""
         const entry =
             palettes[themeKey]
-
         if (!entry || !entry.path) {
             console.warn(
                 "ThemeManager: no file path for",
@@ -691,25 +695,19 @@ QtObject {
             )
             return ""
         }
-
         return entry.path
     }
-
     // ═════════════════════════════════════════════
     // Delete palette
     // ═════════════════════════════════════════════
-
     property Process deleteProc: Process {
         id: deleteProc
-
         onExited:
             manager.rescanPalettes()
-
         stderr: StdioCollector {
             onStreamFinished: {
                 const err =
                     this.text.trim()
-
                 if (err.length > 0)
                     console.warn(
                         "ThemeManager: deletePalette failed ->",
@@ -718,11 +716,15 @@ QtObject {
             }
         }
     }
-
     function deletePalette(themeKey) {
+        if (themeKey === "auto") {
+            console.warn(
+                "ThemeManager: Auto cannot be deleted"
+            )
+            return
+        }
         const entry =
             palettes[themeKey]
-
         if (!entry || !entry.path) {
             console.warn(
                 "ThemeManager: no file path for",
@@ -730,15 +732,12 @@ QtObject {
             )
             return
         }
-
         deleteProc.command = [
             "rm",
             "-f",
             entry.path
         ]
-
         deleteProc.running = true
-
         if (
             currentTheme === themeKey
         ) {
@@ -752,21 +751,17 @@ QtObject {
                             : 0
                     ]
                     : "mocha"
-
             saveCurrentTheme()
         }
     }
-
     // ═════════════════════════════════════════════
     // New palette template
     // ═════════════════════════════════════════════
-
     function defaultPaletteJson(label) {
         return JSON.stringify(
             {
                 label:
                     label || "New Theme",
-
                 aliases: [
                     label
                         ? label
@@ -777,59 +772,41 @@ QtObject {
                             )
                         : "new-theme"
                 ],
-
                 colors: {
                     background:
                         "#1e1e2e",
-
                     backgroundSecondary:
                         "#181825",
-
                     backgroundDeep:
                         "#11111b",
-
                     surface:
                         "#313244",
-
                     surfaceSecondary:
                         "#45475a",
-
                     surfaceTertiary:
                         "#585b70",
-
                     overlay:
                         "#6c7086",
-
                     overlaySecondary:
                         "#7f849c",
-
                     overlayTertiary:
                         "#9399b2",
-
                     text:
                         "#cdd6f4",
-
                     textSecondary:
                         "#bac2de",
-
                     textMuted:
                         "#a6adc8",
-
                     accent:
                         "#b4befe",
-
                     accentSecondary:
                         "#cba6f7",
-
                     success:
                         "#a6e3a1",
-
                     warning:
                         "#f9e2af",
-
                     danger:
                         "#f38ba8",
-
                     info:
                         "#89b4fa"
                 }

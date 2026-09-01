@@ -209,32 +209,36 @@ PanelWindow {
                     return
                 }
                 // ─────────────────────────────
-                // Edit
+                // Edit (Auto is not editable)
                 // ─────────────────────────────
                 if (
                     event.key === Qt.Key_E &&
                     list.count > 0
                 ) {
-                    switcher.requestEdit(
+                    const key =
                         ThemeManager.paletteNames[
                             list.currentIndex
                         ]
-                    )
+                    if (key !== "auto") {
+                        switcher.requestEdit(key)
+                    }
                     event.accepted = true
                     return
                 }
                 // ─────────────────────────────
-                // Delete
+                // Delete (Auto is not deletable)
                 // ─────────────────────────────
                 if (
                     event.key === Qt.Key_D &&
                     list.count > 0
                 ) {
-                    switcher.requestDelete(
+                    const key =
                         ThemeManager.paletteNames[
                             list.currentIndex
                         ]
-                    )
+                    if (key !== "auto") {
+                        switcher.requestDelete(key)
+                    }
                     event.accepted = true
                     return
                 }
@@ -533,19 +537,16 @@ PanelWindow {
                             height,
                             editor.contentHeight
                         )
-
                     function ensureVisible(rect) {
                         if (rect.y < contentY)
                             contentY = rect.y
                         else if (rect.y + rect.height > contentY + height)
                             contentY = rect.y + rect.height - height
-
                         if (rect.x < contentX)
                             contentX = rect.x
                         else if (rect.x + rect.width > contentX + width)
                             contentX = rect.x + rect.width - width
                     }
-
                     TextEdit {
                         id: editor
                         width:
@@ -851,6 +852,11 @@ PanelWindow {
                                 spacing: 4
                                 Text {
                                     text:
+                                        (
+                                            row.modelData === "auto"
+                                                ? "\u25C9 "
+                                                : ""
+                                        ) +
                                         ThemeManager
                                             .palettes[
                                                 row.modelData
@@ -868,7 +874,21 @@ PanelWindow {
                                             ? ThemeManager.fontBold
                                             : ThemeManager.fontRegular
                                 }
+                                Text {
+                                    visible:
+                                        row.modelData === "auto"
+                                    text:
+                                        "follows current wallpaper"
+                                    color:
+                                        ThemeManager.textMuted
+                                    font.family:
+                                        ThemeManager.fontFamily
+                                    font.pixelSize:
+                                        ThemeManager.fontTiny
+                                }
                                 Row {
+                                    visible:
+                                        row.modelData !== "auto"
                                     spacing: 3
                                     Repeater {
                                         model: [
