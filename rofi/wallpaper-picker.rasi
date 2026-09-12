@@ -1,0 +1,165 @@
+/*
+ * Rofi Wallpaper Picker
+ *
+ * Designed to fit the dark, minimal Quickshell setup.
+ *
+ * If your ThemeManager generates different colors, replace the variables
+ * in the first block. The structure is intentionally kept simple so the
+ * theme can also be generated automatically later.
+ */
+
+* {
+    font: "JetBrainsMono Nerd Font 12";
+    background: #11111b;
+    background-alt: #181825;
+    surface: #1e1e2e;
+    surface-alt: #313244;
+    text: #cdd6f4;
+    text-muted: #a6adc8;
+    accent: #cba6f7;
+    selected-text: #11111b;
+    border: #45475a;
+}
+
+/* Main window */
+
+window {
+    fullscreen: false;
+    width: 70%;
+    height: 70%;
+    location: center;
+    anchor: center;
+    border: 2px;
+    border-color: @accent;
+    border-radius: 18px;
+    background-color: @background;
+    padding: 28px;
+}
+
+/* Top row */
+
+mainbox {
+    children: [ inputbar, message, listview ];
+    spacing: 16px;
+    background-color: transparent;
+}
+
+/* Search */
+
+inputbar {
+    children: [ prompt, entry ];
+    spacing: 12px;
+    padding: 12px 16px;
+    border: 1px;
+    border-color: @border;
+    border-radius: 12px;
+    background-color: @background-alt;
+}
+
+prompt {
+    enabled: true;
+    text-color: @accent;
+    background-color: transparent;
+}
+
+entry {
+    placeholder: "Search wallpapers…";
+    placeholder-color: @text-muted;
+    text-color: @text;
+    background-color: transparent;
+    cursor: text;
+}
+
+/* Hint line */
+
+message {
+    padding: 0 8px;
+    background-color: transparent;
+    text-color: @text-muted;
+}
+
+textbox {
+    background-color: transparent;
+    text-color: @text-muted;
+}
+
+/* Wallpaper list */
+
+listview {
+    columns: 4;
+    lines: 2;
+    cycle: true;
+    dynamic: true;
+    scrollbar: false;
+    spacing: 18px;
+    background-color: transparent;
+}
+
+/*
+ * Each row becomes a large wallpaper tile.
+ *
+ * Rofi supplies the actual wallpaper image as element-icon using the
+ * filename emitted by wallpaper-picker.sh.
+ */
+
+element {
+    orientation: vertical;
+    padding: 0;
+    spacing: 8px;
+    border: 1px;
+    border-color: transparent;
+    border-radius: 14px;
+    background-color: @surface;
+}
+
+element-icon {
+    size: 100%;
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    border-radius: 12px;
+    background-color: @surface;
+}
+
+element-text {
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    padding: 8px 10px 10px;
+    text-color: @text-muted;
+    background-color: transparent;
+    ellipsize: end;
+}
+
+/* Selected wallpaper */
+
+element selected {
+    border: 2px;
+    border-color: @accent;
+    background-color: @surface-alt;
+}
+
+element selected element-text {
+    text-color: @text;
+}
+
+element selected element-icon {
+    background-color: @surface-alt;
+}
+
+/* Hover */
+
+element normal.active,
+element alternate.active,
+element selected.active {
+    background-color: @surface-alt;
+    border-color: @accent;
+}
+
+/* Remove unnecessary separator */
+
+element normal {
+    background-color: @surface;
+}
+
+element alternate {
+    background-color: @surface;
+}

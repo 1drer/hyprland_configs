@@ -1,0 +1,28 @@
+{
+  "label": "Slate Tide",
+  "aliases": [
+    "slate-tide",
+    "slate"
+  ],
+  "colors": {
+    "background": "#1a1d26",
+    "backgroundSecondary": "#14161d",
+    "backgroundDeep": "#0d0e13",
+    "surface": "#242833",
+    "surfaceSecondary": "#333844",
+    "surfaceTertiary": "#454b59",
+    "overlay": "#5b6272",
+    "overlaySecondary": "#6f7688",
+    "overlayTertiary": "#868da0",
+    "text": "#e4e7ee",
+    "textSecondary": "#c7ccd8",
+    "textMuted": "#9199ab",
+    "accent": "#5fd4c4",
+    "accentDim": "#3fa89b",
+    "accentSecondary": "#8ab4f8",
+    "success": "#8fd18a",
+    "warning": "#f0c674",
+    "danger": "#e57376",
+    "info": "#7bb4e3"
+  }
+}

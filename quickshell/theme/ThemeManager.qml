@@ -85,12 +85,13 @@ QtObject {
     property int fontTiny: 10
     property int fontSmall: 11
     property int fontNormal: 13
-    property int fontLarge: 15
+    property int fontLarge: 16
     property int fontTitle: 18
+    property int fontIcon: 19
     property int fontRegular: 400
     property int fontMedium: 500
     property int fontBold: 700
-    property int fontHeavy: 800
+    property int fontHeavy: 900
     // ═════════════════════════════════════════════
     // Persistent current theme
     // ═════════════════════════════════════════════

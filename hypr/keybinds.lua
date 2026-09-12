@@ -32,7 +32,7 @@ hl.bind(
 	hl.dsp.exec_cmd([[
   sel=$(cliphist list | (echo "Clear History"; cat) | rofi -dmenu)
   if [ "$sel" = "Clear History" ]; then
-    cliphist wipe && notify-send "Clipboard" "History cleared"
+    cliphist wipe && notify-send "Clipboard" "History cleared" && rm ~/.cache/cliphist/db
   else
     echo "$sel" | cliphist decode | wl-copy
   fi

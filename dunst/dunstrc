@@ -6,7 +6,7 @@
     width = 320
     height = 200
     origin = top-right
-    offset = 12x12
+    offset = (12,12)
     scale = 0
     notification_limit = 5
 
@@ -19,8 +19,8 @@
     progress_bar_corner_radius = 4
 
     # THEME_GLOBAL_BEGIN
-    highlight = "#d3869b"
-    frame_color = "#d3869b"
+    highlight = "#88C0D0"
+    frame_color = "#88C0D0"
 # THEME_GLOBAL_END
 
     ### Appearance ###
@@ -89,9 +89,9 @@
 [urgency_low]
 
     # THEME_LOW_BEGIN
-    background = "#282828"
-    foreground = "#bdae93"
-    frame_color = "#b8bb26"
+    background = "#2E3440"
+    foreground = "#D8DEE9"
+    frame_color = "#A3BE8C"
 # THEME_LOW_END
 
     timeout = 2
@@ -101,9 +101,9 @@
 [urgency_normal]
 
     # THEME_NORMAL_BEGIN
-    background = "#282828"
-    foreground = "#ebdbb2"
-    frame_color = "#d3869b"
+    background = "#2E3440"
+    foreground = "#ECEFF4"
+    frame_color = "#88C0D0"
 # THEME_NORMAL_END
 
     timeout = 4
@@ -114,10 +114,10 @@
 [urgency_critical]
 
     # THEME_CRITICAL_BEGIN
-    background = "#282828"
-    foreground = "#ebdbb2"
-    frame_color = "#fb4934"
-    highlight = "#fb4934"
+    background = "#2E3440"
+    foreground = "#ECEFF4"
+    frame_color = "#BF616A"
+    highlight = "#BF616A"
 # THEME_CRITICAL_END
 
     timeout = 0
@@ -131,8 +131,8 @@
     appname = Spotify
 
     # THEME_SPOTIFY_BEGIN
-    frame_color = "#b8bb26"
-    highlight = "#b8bb26"
+    frame_color = "#A3BE8C"
+    highlight = "#A3BE8C"
 # THEME_SPOTIFY_END
 
     timeout = 4
@@ -142,7 +142,7 @@
     appname = discord
 
     # THEME_DISCORD_BEGIN
-    frame_color = "#83a598"
+    frame_color = "#5E81AC"
 # THEME_DISCORD_END
 
     timeout = 5
@@ -152,8 +152,8 @@
     summary = "Volume*"
 
     # THEME_VOLUME_BEGIN
-    frame_color = "#d3869b"
-    highlight = "#d3869b"
+    frame_color = "#88C0D0"
+    highlight = "#88C0D0"
 # THEME_VOLUME_END
 
     timeout = 2
@@ -164,8 +164,8 @@
     summary = "Brightness*"
 
     # THEME_BRIGHTNESS_BEGIN
-    frame_color = "#fabd2f"
-    highlight = "#fabd2f"
+    frame_color = "#EBCB8B"
+    highlight = "#EBCB8B"
 # THEME_BRIGHTNESS_END
 
     timeout = 2

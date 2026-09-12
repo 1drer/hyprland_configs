@@ -1,0 +1,28 @@
+{
+  "label": "Gruvbox Material",
+  "aliases": [
+    "gruvbox-material",
+    "gruvbox"
+  ],
+  "colors": {
+    "background": "#282828",
+    "backgroundSecondary": "#1d2021",
+    "backgroundDeep": "#141617",
+    "surface": "#32302f",
+    "surfaceSecondary": "#45403d",
+    "surfaceTertiary": "#5a524c",
+    "overlay": "#7c6f64",
+    "overlaySecondary": "#928374",
+    "overlayTertiary": "#a89984",
+    "text": "#d4be98",
+    "textSecondary": "#ddc7a1",
+    "textMuted": "#a89984",
+    "accent": "#d8a657",
+    "accentDim": "#b58538",
+    "accentSecondary": "#e78a4e",
+    "success": "#a9b665",
+    "warning": "#d8a657",
+    "danger": "#ea6962",
+    "info": "#7daea3"
+  }
+}

@@ -40,10 +40,26 @@ def reload_all():
 
 
 def reload_kitty(theme_path):
-    run([
-        "kitty",
-        "@",
-        "set-colors",
-        "-a",
-        theme_path,
-    ])
+    try:
+        subprocess.run(
+            [
+                "kitty",
+                "@",
+                "set-colors",
+                "-a",
+                theme_path,
+            ],
+            check=False,
+            timeout=1,
+        )
+    except subprocess.TimeoutExpired:
+        print(
+            "warning: kitty @ set-colors timed out "
+            "(stale/unreachable remote-control socket?)",
+            file=sys.stderr,
+        )
+    except FileNotFoundError:
+        print(
+            "warning: command not found: kitty",
+            file=sys.stderr,
+        )

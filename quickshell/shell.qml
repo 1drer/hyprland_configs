@@ -1,3 +1,5 @@
+//@ pragma UseQApplication
+
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -11,7 +13,9 @@ ShellRoot {
     // Main Bar
     // ═══════════════════════════════════════════════════════════════════
 
-    Bar {}
+    Bar {
+      id: bar
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Control Center
@@ -21,7 +25,10 @@ ShellRoot {
         active: ControlCenterState.visible
 
         sourceComponent: Component {
-            ControlCenter {}
+          ControlCenter {
+            barHeight: bar.implicitHeight
+            barTopMargin: bar.margins.top
+          }
         }
     }
 

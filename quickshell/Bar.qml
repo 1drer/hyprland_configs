@@ -25,13 +25,33 @@ PanelWindow {
     }
 
     margins {
-        top: 4
-        left: 4
-        right: 4
+        top: 0
+        left: 0
+        right: 0
     }
 
-    implicitHeight: 30
-    color: ThemeManager.backgroundDeep
+    implicitHeight: 28
+
+    color:
+        ThemeManager.backgroundDeep
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Tray Menu State
+    // ═══════════════════════════════════════════════════════════════════
+
+    property Item activeTrayIcon: null
+
+    function openTrayMenu(icon) {
+        trayMenuPopup.openFor(icon)
+    }
+
+    function closeTrayMenu() {
+        trayMenuPopup.closeMenu()
+    }
+
+    function toggleTrayMenu(icon) {
+        trayMenuPopup.toggleFor(icon)
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Main Layout
@@ -41,7 +61,7 @@ PanelWindow {
         anchors.fill: parent
 
         // ═══════════════════════════════════════════════════════════════
-        // Left
+        // LEFT
         // ═══════════════════════════════════════════════════════════════
 
         RowLayout {
@@ -49,119 +69,197 @@ PanelWindow {
 
             anchors {
                 left: parent.left
-                leftMargin: 4
+                leftMargin: 6
                 verticalCenter: parent.verticalCenter
             }
 
             spacing: 8
 
-            // ───────────────────────────────────────────────────────────
+            // ═══════════════════════════════════════════════════════════
             // Workspaces
-            // ───────────────────────────────────────────────────────────
+            // ═══════════════════════════════════════════════════════════
 
-            Row {
-                id: workspaceRow
+            Item {
+                id: workspaceContainer
 
-                spacing: 4
+                implicitWidth:
+                    workspaceRow.implicitWidth
 
-                property var wsIds: {
-                    const ids = new Set([1, 2, 3, 4, 5])
+                implicitHeight:
+                    bar.implicitHeight - 8
 
-                    for (const ws of Hyprland.workspaces.values) {
-                        if (ws.id > 0)
-                            ids.add(ws.id)
-                    }
+                Rectangle {
+                    id: activeWorkspaceIndicator
 
-                    return Array.from(ids).sort(
-                        (a, b) => a - b
-                    )
-                }
+                    width:
+                        bar.implicitHeight - 8
 
-                Repeater {
-                    model: workspaceRow.wsIds
+                    height:
+                        bar.implicitHeight - 8
 
-                    delegate: Rectangle {
-                        id: workspaceButton
+                    radius: 0
 
-                        required property int modelData
+                    color:
+                        ThemeManager.accent
 
-                        readonly property int wsId:
-                            modelData
+                    z: 0
 
-                        readonly property var workspace:
-                            Hyprland.workspaces.values.find(
-                                w => w.id === wsId
-                            )
+                    x: {
+                        var focusedId =
+                            Hyprland.focusedWorkspace?.id
 
-                        readonly property bool active:
-                            Hyprland.focusedWorkspace?.id === wsId
+                        for (
+                            var i = 0;
+                            i < workspaceRepeater.count;
+                            i++
+                        ) {
+                            var item =
+                                workspaceRepeater.itemAt(i)
 
-                        readonly property bool occupied:
-                            workspace !== undefined
-
-                        readonly property bool urgent:
-                            workspace?.urgent ?? false
-
-                        width: bar.implicitHeight - 8
-                        height: bar.implicitHeight - 8
-
-                        color: urgent
-                            ? ThemeManager.danger
-                            : active
-                                ? ThemeManager.accent
-                                : "transparent"
-
-                        Text {
-                            anchors.fill: parent
-
-                            text: workspaceButton.wsId
-
-                            horizontalAlignment:
-                                Text.AlignHCenter
-
-                            verticalAlignment:
-                                Text.AlignVCenter
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontNormal
-
-                            font.weight:
-                                workspaceButton.occupied
-                                    ? ThemeManager.fontHeavy
-                                    : ThemeManager.fontBold
-
-                            color:
-                                workspaceButton.active ||
-                                workspaceButton.urgent
-                                    ? ThemeManager.backgroundDeep
-                                    : workspaceButton.occupied
-                                        ? ThemeManager.accent
-                                        : ThemeManager.textMuted
+                            if (
+                                item &&
+                                item.wsId === focusedId
+                            ) {
+                                return item.x
+                            }
                         }
 
-                        MouseArea {
-                            anchors.fill: parent
+                        return 0
+                    }
 
-                            cursorShape:
-                                workspaceButton.workspace
-                                    ? Qt.PointingHandCursor
-                                    : Qt.ArrowCursor
+                    Behavior on x {
+                        SpringAnimation {
+                            spring: 7
+                            damping: 0.4
+                            velocity: 0
+                        }
+                    }
+                }
 
-                            onClicked: {
-                                if (workspaceButton.workspace)
-                                    workspaceButton.workspace.activate()
+                Row {
+                    id: workspaceRow
+
+                    spacing: 4
+
+                    z: 1
+
+                    property var wsIds: {
+                        const ids = new Set([
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ])
+
+                        for (
+                            const ws
+                            of Hyprland.workspaces.values
+                        ) {
+                            if (ws.id > 0)
+                                ids.add(ws.id)
+                        }
+
+                        return Array.from(ids).sort(
+                            (a, b) => a - b
+                        )
+                    }
+
+                    Repeater {
+                        id: workspaceRepeater
+
+                        model:
+                            workspaceRow.wsIds
+
+                        delegate: Rectangle {
+                            id: workspaceButton
+
+                            required property int modelData
+
+                            readonly property int wsId:
+                                modelData
+
+                            readonly property var workspace:
+                                Hyprland.workspaces.values.find(
+                                    w => w.id === wsId
+                                )
+
+                            readonly property bool active:
+                                Hyprland.focusedWorkspace?.id ===
+                                wsId
+
+                            readonly property bool occupied:
+                                workspace !== undefined
+
+                            readonly property bool urgent:
+                                workspace?.urgent ?? false
+
+                            width:
+                                bar.implicitHeight - 8
+
+                            height:
+                                bar.implicitHeight - 8
+
+                            color:
+                                urgent
+                                    ? ThemeManager.danger
+                                    : "transparent"
+
+                            Text {
+                                anchors.fill: parent
+
+                                text:
+                                    workspaceButton.wsId
+
+                                horizontalAlignment:
+                                    Text.AlignHCenter
+
+                                verticalAlignment:
+                                    Text.AlignVCenter
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize:
+                                    ThemeManager.fontNormal
+
+                                font.weight:
+                                    ThemeManager.fontHeavy
+
+                                color:
+                                    workspaceButton.urgent
+                                        ? ThemeManager.backgroundDeep
+                                        : workspaceButton.active
+                                            ? ThemeManager.backgroundDeep
+                                            : workspaceButton.occupied
+                                                ? ThemeManager.accent
+                                                : ThemeManager.overlaySecondary
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+
+                                cursorShape:
+                                    workspaceButton.workspace
+                                        ? Qt.PointingHandCursor
+                                        : Qt.ArrowCursor
+
+                                onClicked: {
+                                    if (
+                                        workspaceButton.workspace
+                                    ) {
+                                        workspaceButton.workspace.activate()
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // ───────────────────────────────────────────────────────────
+            // ═══════════════════════════════════════════════════════════
             // Active Window
-            // ───────────────────────────────────────────────────────────
+            // ═══════════════════════════════════════════════════════════
 
             Rectangle {
                 id: activeWindowContainer
@@ -174,8 +272,11 @@ PanelWindow {
                     activeWindow.workspace ===
                         Hyprland.focusedWorkspace
 
-                visible: hasActiveWindow
-                color: ThemeManager.surface
+                visible:
+                    hasActiveWindow
+
+                color:
+                    ThemeManager.surface
 
                 implicitHeight:
                     bar.implicitHeight - 8
@@ -194,7 +295,9 @@ PanelWindow {
                     }
 
                     width: 2
-                    color: ThemeManager.accent
+
+                    color:
+                        ThemeManager.accent
                 }
 
                 Text {
@@ -204,7 +307,6 @@ PanelWindow {
                         left: parent.left
                         right: parent.right
                         verticalCenter: parent.verticalCenter
-
                         leftMargin: 10
                         rightMargin: 6
                     }
@@ -233,7 +335,7 @@ PanelWindow {
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // Right
+        // RIGHT
         // ═══════════════════════════════════════════════════════════════
 
         Item {
@@ -251,14 +353,6 @@ PanelWindow {
             implicitHeight:
                 rightRow.implicitHeight
 
-            // ───────────────────────────────────────────────────────────
-            // Control Center Mouse Area
-            //
-            // This covers the whole right section.
-            // The tray has a higher z value so tray clicks pass through
-            // to the tray icons instead.
-            // ───────────────────────────────────────────────────────────
-
             MouseArea {
                 id: controlCenterMouseArea
 
@@ -273,70 +367,261 @@ PanelWindow {
                     ControlCenterState.toggle()
             }
 
-            // ───────────────────────────────────────────────────────────
-            // Right Row
-            // ───────────────────────────────────────────────────────────
-
             RowLayout {
                 id: rightRow
 
                 anchors.fill: parent
 
-                spacing: 16
+                spacing: 12
 
-                // ───────────────────────────────────────────────────────
-                // System Tray
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
+                // COLLAPSIBLE SYSTEM TRAY
+                // ═══════════════════════════════════════════════════════
 
-                RowLayout {
-                    id: trayRow
+                Item {
+                    id: trayContainer
 
-                    spacing: 10
-                    z: 2
+                    Layout.alignment:
+                        Qt.AlignVCenter
 
-                    Repeater {
-                        model: SystemTray.items
+                    // Start collapsed
+                    property bool expanded: false
 
-                        delegate: Item {
-                            required property var modelData
+                    // Reactive list of tray items.
+                    // ObjectModel.values updates when tray items
+                    // are registered/unregistered.
+                    readonly property var trayItems:
+                        SystemTray.items.values
 
-                            width: 16
-                            height: 16
+                    readonly property bool hasTrayItems:
+                        trayItems.length > 0
 
-                            Image {
-                                anchors.fill: parent
+                    readonly property int iconSize: 16
 
-                                source:
-                                    modelData.icon
+                    readonly property int toggleWidth: 12
 
-                                sourceSize:
-                                    Qt.size(16, 16)
+                    readonly property int traySpacing: 10
+
+                    // Completely remove the tray from the
+                    // layout when there are no tray applications.
+                    visible:
+                        hasTrayItems
+
+                    implicitWidth:
+                        hasTrayItems
+                            ? toggleWidth +
+                              (
+                                  expanded
+                                      ? traySpacing +
+                                        trayIconsRow.implicitWidth
+                                      : 0
+                              )
+                            : 0
+
+                    implicitHeight:
+                        bar.implicitHeight - 8
+
+                    clip: true
+
+                    Behavior on implicitWidth {
+                        NumberAnimation {
+                            duration: 180
+
+                            easing.type:
+                                Easing.OutCubic
+                        }
+                    }
+
+                    // ═══════════════════════════════════════════════
+                    // Collapse / Expand Pointer
+                    // ═══════════════════════════════════════════════
+
+                    Item {
+                        id: trayToggle
+
+                        anchors {
+                            left: parent.left
+                            verticalCenter: parent.verticalCenter
+                        }
+
+                        width:
+                            trayContainer.toggleWidth
+
+                        height:
+                            trayContainer.iconSize
+
+                        Text {
+                            anchors.centerIn: parent
+
+                            text:
+                                trayContainer.expanded
+                                    ? ""
+                                    : ""
+
+                            font.family:
+                                ThemeManager.fontFamily
+
+                            font.pixelSize:
+                                ThemeManager.fontIcon - 1
+
+                            font.weight:
+                                ThemeManager.fontHeavy
+
+                            color:
+                                trayToggleMouse.containsMouse
+                                    ? ThemeManager.text
+                                    : ThemeManager.textMuted
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 100
+                                }
                             }
+                        }
 
-                            MouseArea {
-                                anchors.fill: parent
+                        MouseArea {
+                            id: trayToggleMouse
 
-                                z: 10
+                            anchors.fill: parent
 
-                                cursorShape:
-                                    Qt.PointingHandCursor
+                            hoverEnabled: true
 
-                                acceptedButtons:
-                                    Qt.LeftButton |
-                                    Qt.RightButton
+                            z: 20
 
-                                onClicked: (mouse) => {
-                                    if (
-                                        mouse.button ===
-                                        Qt.RightButton
-                                    ) {
-                                        modelData.display(
-                                            bar,
-                                            mouse.x,
-                                            mouse.y
-                                        )
-                                    } else {
-                                        modelData.activate()
+                            cursorShape:
+                            Qt.PointingHandCursor
+
+                          
+
+
+                            onClicked: {
+                                trayContainer.expanded =
+                                    !trayContainer.expanded
+                            }
+                        }
+                    }
+
+                    // ═══════════════════════════════════════════════
+                    // Tray Icons
+                    // ═══════════════════════════════════════════════
+
+                    Item {
+                        id: trayIconsContainer
+
+                        anchors {
+                            left:
+                                trayToggle.right
+
+                            leftMargin:
+                                trayContainer.traySpacing
+
+                            verticalCenter:
+                                parent.verticalCenter
+                        }
+
+                        implicitWidth:
+                            trayIconsRow.implicitWidth
+
+                        implicitHeight:
+                            trayIconsRow.implicitHeight
+
+                        clip: true
+
+                        opacity:
+                            trayContainer.expanded
+                                ? 1
+                                : 0
+
+                        x:
+                            trayContainer.expanded
+                                ? 0
+                                : -20
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 180
+
+                                easing.type:
+                                    Easing.OutCubic
+                            }
+                        }
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 120
+
+                                easing.type:
+                                    Easing.OutCubic
+                            }
+                        }
+
+                        Row {
+                            id: trayIconsRow
+
+                            anchors.fill: parent
+
+                            spacing:
+                                trayContainer.traySpacing
+
+                            Repeater {
+                                model:
+                                    SystemTray.items
+
+                                delegate: Item {
+                                    id: trayIcon
+
+                                    required property var modelData
+
+                                    width:
+                                        trayContainer.iconSize
+
+                                    height:
+                                        trayContainer.iconSize
+
+                                    Image {
+                                        anchors.fill: parent
+
+                                        source:
+                                            modelData.icon
+
+                                        sourceSize:
+                                            Qt.size(
+                                                trayContainer.iconSize,
+                                                trayContainer.iconSize
+                                            )
+
+                                        asynchronous: true
+
+                                        smooth: true
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+
+                                        z: 10
+
+                                        cursorShape:
+                                            Qt.PointingHandCursor
+
+                                        acceptedButtons:
+                                            Qt.LeftButton |
+                                            Qt.RightButton
+
+                                        onClicked: (mouse) => {
+                                            if (
+                                                mouse.button ===
+                                                    Qt.LeftButton &&
+                                                !modelData.onlyMenu
+                                            ) {
+                                                modelData.activate()
+                                            } else if (
+                                                modelData.hasMenu
+                                            ) {
+                                                bar.toggleTrayMenu(
+                                                    trayIcon
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -344,10 +629,59 @@ PanelWindow {
                     }
                 }
 
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
                 // Volume
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
+//                 Text {
+//     id: volumeText
 
+//     z: 1
+
+//     readonly property var sink:
+//         Pipewire.defaultAudioSink
+
+//     readonly property int volume:
+//         sink?.audio
+//             ? Math.round(
+//                 sink.audio.volume * 100
+//             )
+//             : 0
+
+//     readonly property bool muted:
+//         sink?.audio?.muted ?? false
+
+//     PwObjectTracker {
+//         objects: [
+//             volumeText.sink
+//         ]
+//     }
+
+//     text:
+//         muted
+//             ? ""
+//             : volume <= 20
+//                 ? ""
+//                 : volume <= 40
+//                     ? ""
+//                     : volume <= 70
+//                       ?""
+//                       :""
+
+//     color:
+//         muted
+//             ? ThemeManager.textMuted
+//             : ThemeManager.accent
+
+//     font.family:
+//         ThemeManager.fontFamily
+
+//     font.pixelSize:
+//         ThemeManager.fontIcon
+
+//     font.weight:
+//         ThemeManager.fontHeavy
+// }
+               
                 Text {
                     id: volumeText
 
@@ -367,7 +701,9 @@ PanelWindow {
                         sink?.audio?.muted ?? false
 
                     PwObjectTracker {
-                        objects: [volumeText.sink]
+                        objects: [
+                            volumeText.sink
+                        ]
                     }
 
                     text:
@@ -389,10 +725,10 @@ PanelWindow {
                     font.weight:
                         ThemeManager.fontHeavy
                 }
-
-                // ───────────────────────────────────────────────────────
+ 
+                // ═══════════════════════════════════════════════════════
                 // Wi-Fi
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
 
                 Text {
                     id: wifiText
@@ -422,13 +758,29 @@ PanelWindow {
                             )
                             : 0
 
-                    text:
-                        !wifiEnabled
-                            ? "Off"
-                            : connected
-                                ? "  " + signalStrength + "%"
-                                : ""
+                    visible:
+                        wifiEnabled
 
+                    text:
+                        connected
+                            ? "  " +
+                              signalStrength +
+                              "%"
+                            : ""
+                    
+          //              text: {
+        //if (!connected)
+          //  return "󰤯"
+
+        //if (signalStrength >= 75)
+       // return "󰤥"
+       // else if (signalStrength >= 50)
+       //     return "󰤢"
+      //  else if (signalStrength >= 25)
+      //      return "󰤟"
+    //    else
+  //          return "󰤯"
+//    }
                     color:
                         connected
                             ? ThemeManager.info
@@ -444,9 +796,9 @@ PanelWindow {
                         ThemeManager.fontHeavy
                 }
 
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
                 // Bluetooth
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
 
                 Text {
                     id: bluetoothText
@@ -464,19 +816,19 @@ PanelWindow {
                             device => device.connected
                         ).length
 
-                    text:
+                    visible:
                         bluetoothEnabled
-                            ? connectedDevices > 0
-                                ? "BT: " + connectedDevices
-                                : "BT"
-                            : "Off"
+
+                    text:
+                        connectedDevices > 0
+                            ? "BT " +
+                              connectedDevices
+                            : "BT"
 
                     color:
-                        connectedDevices
+                        connectedDevices > 0
                             ? ThemeManager.info
-                            : bluetoothEnabled
-                                ? ThemeManager.accent
-                                : ThemeManager.textMuted
+                            : ThemeManager.accent
 
                     font.family:
                         ThemeManager.fontFamily
@@ -488,9 +840,9 @@ PanelWindow {
                         ThemeManager.fontHeavy
                 }
 
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
                 // Power Profile
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
 
                 Text {
                     id: powerProfileText
@@ -499,6 +851,12 @@ PanelWindow {
 
                     readonly property var profile:
                         PowerProfiles.profile
+
+                    visible:
+                        profile ===
+                            PowerProfile.PowerSaver ||
+                        profile ===
+                            PowerProfile.Performance
 
                     text: {
                         switch (profile) {
@@ -542,9 +900,9 @@ PanelWindow {
                         ThemeManager.fontHeavy
                 }
 
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
                 // Battery
-                // ───────────────────────────────────────────────────────
+                // ═══════════════════════════════════════════════════════
 
                 Text {
                     id: batteryText
@@ -562,7 +920,10 @@ PanelWindow {
                         !pluggedIn &&
                         battery.percentage <= 0.05
 
-                    function batteryColor(pct, plugged) {
+                    function batteryColor(
+                        pct,
+                        plugged
+                    ) {
                         if (plugged)
                             return ThemeManager.success
 
@@ -573,14 +934,14 @@ PanelWindow {
                             return ThemeManager.warning
 
                         return ThemeManager.accent
-                      }
+                    }
 
                     text:
                         battery.ready
                             ? Math.round(
                                 battery.percentage * 100
                             ) + "%"
-                            : "" 
+                            : ""
 
                     color:
                         battery.ready
@@ -615,38 +976,58 @@ PanelWindow {
                             Animation.Infinite
 
                         NumberAnimation {
-                            target: batteryText
+                            target:
+                                batteryText
 
-                            property: "opacity"
+                            property:
+                                "opacity"
 
                             from: 1.0
+
                             to: 0.2
 
                             duration: 500
                         }
 
                         NumberAnimation {
-                            target: batteryText
+                            target:
+                                batteryText
 
-                            property: "opacity"
+                            property:
+                                "opacity"
 
                             from: 0.2
+
                             to: 1.0
 
                             duration: 500
                         }
                     }
-                }
+                  }
+                  Text {
+    id: clock2
+   visible: false
+    font.family: ThemeManager.fontFamily
+    font.pixelSize: ThemeManager.fontNormal+1
+    font.weight: ThemeManager.fontHeavy
+
+    color: ThemeManager.text
+
+    text: Qt.formatDateTime(
+        new Date(),
+        "hh:mm AP"
+    )
+}
             }
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // Center
+        // CENTER CLOCK
         // ═══════════════════════════════════════════════════════════════
 
         Text {
             id: clock
-
+            visible: true
             anchors.centerIn: parent
 
             font.family:
@@ -661,11 +1042,36 @@ PanelWindow {
             color:
                 ThemeManager.text
 
+            property bool showDate: false
+
             function refresh() {
-                text = Qt.formatDateTime(
-                    new Date(),
-                    "MMM dd  hh:mm"
-                )
+                if (showDate) {
+                    text =
+                        Qt.formatDateTime(
+                            new Date(),
+                            "dd MMM yyyy"
+                        )
+                } else {
+                    text =
+                        Qt.formatDateTime(
+                            new Date(),
+                            "dddd, hh:mm"
+                        )
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+
+                cursorShape:
+                    Qt.PointingHandCursor
+
+                onClicked: {
+                    clock.showDate =
+                        !clock.showDate
+
+                    clock.refresh()
+                }
             }
 
             Component.onCompleted:
@@ -681,5 +1087,16 @@ PanelWindow {
                     clock.refresh()
             }
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Themed System Tray Menu
+    // ═══════════════════════════════════════════════════════════════════
+
+    TrayMenu {
+        id: trayMenuPopup
+
+        barWindow:
+            bar
     }
 }

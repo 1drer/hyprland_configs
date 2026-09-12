@@ -99,6 +99,25 @@ def get_lightness(hex_color):
     return l
 
 
+def mute_vivid(hex_color, sat_target, light_max=None):
+    """Matugen's raw primary/secondary tones come through at ~100%
+    HLS saturation, which reads as neon/pastel rather than a grounded
+    accent color. Keep the color's actual hue (so it still reflects
+    the wallpaper) but pull saturation down to sat_target, and cap
+    lightness so it doesn't stay washed-out pale."""
+    r, g, b = hex_to_rgb(hex_color)
+    h, l, _ = colorsys.rgb_to_hls(r, g, b)
+    if light_max is not None:
+        l = min(l, light_max)
+    r2, g2, b2 = colorsys.hls_to_rgb(h, l, sat_target)
+    return rgb_to_hex((r2, g2, b2))
+
+
+ACCENT_SAT_TARGET = 0.45
+ACCENT_SECONDARY_SAT_TARGET = 0.30
+ACCENT_LIGHT_MAX = 0.68
+
+
 # Material's tonal system keeps neutrals (background/surface/text)
 # almost fully desaturated by design - that's what reads as "too
 # black/gray" compared to a hand-tinted palette like Catppuccin,
@@ -111,18 +130,18 @@ def get_lightness(hex_color):
 # computed relative to background's already-tinted value in the loop
 # in build_colors().
 NEUTRAL_TINT_TARGETS = {
-    "background": 0.22,
-    "backgroundSecondary": 0.24,
-    "backgroundDeep": 0.26,
-    "surface": 0.20,
-    "surfaceSecondary": 0.18,
-    "surfaceTertiary": 0.16,
-    "overlay": 0.16,
-    "overlaySecondary": 0.20,
-    "overlayTertiary": 0.14,
-    "text": 0.22,
-    "textSecondary": 0.18,
-    "textMuted": 0.16,
+    "background": 0.12,
+    "backgroundSecondary": 0.11,
+    "backgroundDeep": 0.13,
+    "surface": 0.10,
+    "surfaceSecondary": 0.09,
+    "surfaceTertiary": 0.08,
+    "overlay": 0.07,
+    "overlaySecondary": 0.09,
+    "overlayTertiary": 0.06,
+    "text": 0.14,
+    "textSecondary": 0.11,
+    "textMuted": 0.08,
 }
 # Lightness safety net for roles that must stay legible/visible no
 # matter what a given wallpaper produces. backgroundDeep is handled
@@ -190,17 +209,15 @@ def run_matugen(image_path, mode):
                 # Some wallpapers have several similarly-dominant
                 # colors; matugen then prompts interactively to pick
                 # one, which hangs/fails when run headlessly (no
-                # TTY). "--prefer saturation" both skips that prompt
-                # and picks the most saturated dominant cluster
-                # instead of the most frequent one - the most-
-                # frequent pixel cluster is often a blended/antialiased
-                # region with a stray tint that doesn't represent the
-                # image (e.g. a lavender accent out of a gruvbox-toned
-                # wallpaper), which Material's chroma boost then makes
-                # worse. The most-saturated cluster is far more likely
-                # to be an actual vivid color that's really in the image.
+                # TTY). "--prefer less-saturation" both skips that
+                # prompt and picks a representative dominant cluster
+                # instead of the most-saturated one - "saturation"
+                # was found to grab small, vivid, non-representative
+                # patches (e.g. a warm highlight) over a wallpaper's
+                # actual dominant color, which reads as a completely
+                # wrong hue (e.g. pink accent from a green wallpaper).
                 "--prefer",
-                "saturation",
+                "less-saturation",
             ],
             capture_output=True,
             text=True,
@@ -245,6 +262,19 @@ def build_colors(data, mode):
     primary = colors.get("accent", "#808080")
     for role, hue in SEMANTIC_HUES.items():
         colors[role] = semantic_color(hue)
+
+    # matugen's raw primary/secondary come through at ~100% HLS
+    # saturation and often quite light - reads as neon/pastel rather
+    # than a grounded accent (compare Kita, ~45% saturation). Mute
+    # them while keeping the wallpaper's actual hue.
+    if "accent" in colors:
+        colors["accent"] = mute_vivid(
+            colors["accent"], ACCENT_SAT_TARGET, ACCENT_LIGHT_MAX
+        )
+    if "accentSecondary" in colors:
+        colors["accentSecondary"] = mute_vivid(
+            colors["accentSecondary"], ACCENT_SECONDARY_SAT_TARGET, ACCENT_LIGHT_MAX
+        )
 
     # Give the neutral roles the accent's hue family instead of
     # Material's near-gray default.

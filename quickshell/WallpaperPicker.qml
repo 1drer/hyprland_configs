@@ -1188,3 +1188,4 @@ Scope {
         root.openPicker()
     }
 }
+

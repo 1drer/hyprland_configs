@@ -13,6 +13,9 @@ import "./services"
 
 PanelWindow {
     id: root
+    
+    property int barHeight: 28
+    property int barTopMargin: 0
 
     anchors {
         top: true
@@ -20,7 +23,7 @@ PanelWindow {
     }
 
     margins {
-        top: 38
+        top: barHeight + barTopMargin + 4
         right: 4
     }
 
