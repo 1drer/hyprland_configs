@@ -13,7 +13,14 @@ hl.animation({ leaf = "windowsMove", enabled = true, speed = 2, bezier = "md3_de
 
 hl.animation({ leaf = "border", enabled = true, speed = 1, bezier = "linear" })
 hl.animation({ leaf = "fade", enabled = true, speed = 2, bezier = "md3_decel" })
-hl.animation({ leaf = "layers", enabled = true, speed = 2, bezier = "md3_decel", style = "slide" })
+-- Layer-shell surfaces (quickshell power menu, bars, popups) should
+-- appear and disappear instantly, no slide or fade.
+hl.animation({ leaf = "layers", enabled = false, speed = 0 })
+hl.animation({ leaf = "layersIn", enabled = false, speed = 0 })
+hl.animation({ leaf = "layersOut", enabled = false, speed = 0 })
+hl.animation({ leaf = "fadeLayers", enabled = false, speed = 0 })
+hl.animation({ leaf = "fadeLayersIn", enabled = false, speed = 0 })
+hl.animation({ leaf = "fadeLayersOut", enabled = false, speed = 0 })
 
 -- FOR HORIZONTAL FAST:
 hl.animation({ leaf = "workspaces", enabled = true, speed = 2.5, bezier = "md3_decel", style = "slide" })
