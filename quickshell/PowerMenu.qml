@@ -53,7 +53,10 @@ PanelWindow {
             label: "Log Out",
             colorKey: "accent",
             delay: 200,
-            command: [ "hyprctl", "dispatch", "exit" ]
+            // This fork has no classic "exit" dispatcher — hyprctl dispatch
+            // evaluates Lua DSL, i.e. Hyprland's own exit is hl.dsp.exit()
+            // (same call hyprshutdown uses on the lua provider).
+            command: [ "hyprctl", "dispatch", "hl.dsp.exit()" ]
         },
         {
             icon: "󰒲",
