@@ -44,6 +44,39 @@ ShellRoot {
         }
     }
 
+    // Action executor — long-lived, so it survives the menu window
+    // being destroyed on close. The menu schedules a command through
+    // PowerMenuState; we run it after a short delay so the screen
+    // doesn't lock/power down with the menu still animated on top.
+    Timer {
+        id: powerActionTimer
+
+        repeat: false
+
+        onTriggered: {
+            const command = PowerMenuState.pendingCommand
+
+            if (command !== null) {
+                powerActionProcess.command = command
+                powerActionProcess.running = true
+                PowerMenuState.pendingCommand = null
+            }
+        }
+    }
+
+    Process {
+        id: powerActionProcess
+    }
+
+    Connections {
+        target: PowerMenuState
+
+        function onActionScheduled(delay) {
+            powerActionTimer.interval = Math.round(delay)
+            powerActionTimer.restart()
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Wallpaper Picker
     // ═══════════════════════════════════════════════════════════════════

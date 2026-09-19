@@ -1,25 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import "./theme"
 import "./services"
-
-// ─────────────────────────────────────────────────────────────────────
-// POWER MENU
-//
-// Quickshell re-implementation of the rofi power menu. Same actions
-// (Shutdown / Restart / Log out / Suspend / Lock), same sharp-corner,
-// accent-bordered aesthetic as the rest of the shell, driven through
-// the theme system instead of rofi's @import palette.
-//
-//   * Centered floating panel over a dimmed backdrop (click the
-//     backdrop to dismiss)
-//   * Icon-only horizontal strip — hover / ← → + Enter / Esc to cancel
-//   * Color-coded cells: danger / warning / accent / info / success
-//   * Commands run through a Process after the menu has closed, so
-//     the lock/suspend/shutdown animation doesn't capture the menu
-// ─────────────────────────────────────────────────────────────────────
 
 PanelWindow {
     id: root
@@ -222,25 +205,10 @@ PanelWindow {
 
         // Give the menu time to actually disappear before the screen
         // locks or powers down — otherwise the panel lingers on screen
-        // during the lock/suspend animation.
-        actionProcess.command = action.command
-
-        actionDelayTimer.interval = action.delay
-        actionDelayTimer.restart()
-    }
-
-    Timer {
-        id: actionDelayTimer
-
-        repeat: false
-
-        onTriggered: {
-            actionProcess.running = true
-        }
-    }
-
-    Process {
-        id: actionProcess
+        // during the lock/suspend animation. The command runs from the
+        // shell (see shell.qml's action executor); this window is
+        // destroyed on close and cannot own the process.
+        PowerMenuState.schedule(action.command, action.delay)
     }
 
     // ── Keyboard (escape / arrows / enter) ────────────────────────
