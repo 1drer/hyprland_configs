@@ -92,7 +92,14 @@ PanelWindow {
         anchors.fill: parent
 
         color: "#000000"
-        opacity: 0.45
+        opacity: 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 120
+                easing.type: Easing.OutCubic
+            }
+        }
 
         // Click anywhere on the backdrop to dismiss the menu.
         MouseArea {
@@ -110,6 +117,25 @@ PanelWindow {
         id: menuSurface
 
         anchors.centerIn: parent
+
+        transformOrigin: Item.Center
+
+        opacity: 0
+        scale: 0.92
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 120
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: 120
+                easing.type: Easing.OutCubic
+            }
+        }
 
         width: root.menuWidth
         height: root.menuHeight
@@ -247,6 +273,12 @@ PanelWindow {
     }
 
     Component.onCompleted: {
+        // Manifest "from thin air": the dim fades in and the panel
+        // fades + zooms up from the center. Done in QML (not Hyprland)
+        // so no other layer surface (bar, quick settings, …) animates.
+        backdrop.opacity = 0.45
+        menuSurface.opacity = 1
+        menuSurface.scale = 1
         keyboardFocus.forceActiveFocus()
     }
 }
