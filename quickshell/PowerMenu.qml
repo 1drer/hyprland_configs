@@ -39,21 +39,21 @@ PanelWindow {
             label: "Shutdown",
             colorKey: "danger",
             delay: 300,
-            command: [ "hyprshutdown", "-t", "Shutting down...", "--post-cmd", "shutdown -P 0" ]
+            command: [ "systemctl", "poweroff" ]
         },
         {
             icon: "󰑓",
             label: "Restart",
             colorKey: "warning",
             delay: 300,
-            command: [ "hyprshutdown", "-t", "Restarting...", "--post-cmd", "reboot" ]
+            command: [ "systemctl", "reboot" ]
         },
         {
             icon: "󰍃",
             label: "Log Out",
             colorKey: "accent",
             delay: 200,
-            command: [ "hyprshutdown", "-t", "Logging out..." ]
+            command: [ "hyprctl", "dispatch", "exit" ]
         },
         {
             icon: "󰒲",
