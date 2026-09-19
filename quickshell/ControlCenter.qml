@@ -9,11 +9,30 @@ import Quickshell.Bluetooth
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import "./theme"
+import "./modules"
 import "./services"
+
+// ─────────────────────────────────────────────────────────────────────
+// JITTER-FREE CONTROL CENTER
+//
+// The window NEVER resizes. It is a fixed-size transparent overlay
+// anchored top-right. The visible panel (panelSurface) hugs `mainColumn`
+// from the top and can grow/shrink freely inside, without ever touching
+// the surface geometry — window resize is the thing that causes
+// compositor-side stutter (quickshell#18), so it simply never happens.
+//
+//   * `mask`  → the compositor only receives clicks in the panel region;
+//               the transparent strip below the panel is click-through.
+//   * `HyprlandWindow.visibleMask` → renders only the actual panel region
+//               so the empty overlay costs (almost) nothing, even with
+//               blur enabled on the wallpaper.
+//   * The expanded Wi-Fi / Bluetooth lists are scrollable and capped so
+//     the fixed height always fits every possible content state.
+// ─────────────────────────────────────────────────────────────────────
 
 PanelWindow {
     id: root
-    
+
     property int barHeight: 28
     property int barTopMargin: 0
 
@@ -27,19 +46,53 @@ PanelWindow {
         right: 4
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // FIXED SIZING
+    // ═══════════════════════════════════════════════════════════════
+
     implicitWidth: 430
-    implicitHeight: mainColumn.implicitHeight + 32
+
+    readonly property int tileHeight: 44
+    readonly property int networkRowHeight: 46
+    readonly property int actionHeight: 26
+    readonly property int panelPadding: 32
+
+    readonly property int columnSpacing: 8
+
+    // Lists inside the expanded sections scroll after this much.
+    readonly property int expandedContentCap: 400
+    readonly property int expandedSectionMaxHeight:
+        root.expandedContentCap + 20
+
+    // Tallest the panel can ever be:
+    //   the 3 tile rows            (wifi/bt, airplane/night, power)
+    //   3 slider-height rows       (volume, brightness, warmth)
+    //   one expanded section       (wifi and bluetooth are mutually exclusive)
+    //   spacing between rows, and the outer padding.
+    readonly property int fixedImplicitHeight:
+        root.panelPadding +
+        root.tileHeight * 3 +
+        root.actionHeight * 3 +
+        root.expandedSectionMaxHeight +
+        root.columnSpacing * 6
+
+    implicitHeight: root.fixedImplicitHeight
+
+    // ═══════════════════════════════════════════════════════════════
+    // MASK / VISIBILITY
+    // ═══════════════════════════════════════════════════════════════
 
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
 
-    // ═══════════════════════════════════════════════════════════════
-    // CONSTANTS
-    // ═══════════════════════════════════════════════════════════════
+    Region {
+        id: panelRegion
 
-    readonly property int tileHeight: 58
-    readonly property int networkRowHeight: 46
-    readonly property int actionHeight: 26
+        item: panelSurface
+    }
+
+    mask: panelRegion
+    HyprlandWindow.visibleMask: panelRegion
 
     // ═══════════════════════════════════════════════════════════════
     // STATE
@@ -60,6 +113,14 @@ PanelWindow {
     property int brightness: 50
 
     property bool airplaneMode: false
+
+    property bool nightMode: false
+    property int nightTemperature: 3500
+
+    // True while hypridle is stopped, i.e. idle actions (lock, suspend)
+    // are suppressed. Mirrors the night-mode convention: the panel
+    // re-reads the real process state on open and after every toggle.
+    property bool idleInhibited: false
 
     // ═══════════════════════════════════════════════════════════════
     // NATIVE DEVICES
@@ -107,23 +168,54 @@ PanelWindow {
                 : []
     }
 
+    // Saved connection names come from NetworkManager profiles (nmcli),
+    // so the saved list also includes networks that are configured but
+    // currently out of range — the device's `networks` model only
+    // contains what the last scan saw.
+    property var savedConnectionNames: []
+
     ScriptModel {
         id: savedWifiModel
 
-        values:
-            root.wifiDevice
-                ? [...root.wifiDevice.networks.values]
-                    .filter(network => network.known)
-                    .sort(
-                        (a, b) => {
-                            if (a.connected !== b.connected)
-                                return a.connected ? -1 : 1
+        values: {
+            const device = root.wifiDevice
 
-                            return root.wifiSignal(b) -
-                                   root.wifiSignal(a)
-                        }
-                    )
-                : []
+            const available =
+                device
+                    ? [...device.networks.values]
+                        .filter(network => network.known)
+                    : []
+
+            available.sort(
+                (a, b) => {
+                    if (a.connected !== b.connected)
+                        return a.connected ? -1 : 1
+
+                    return root.wifiSignal(b) -
+                           root.wifiSignal(a)
+                }
+            )
+
+            const availableNames =
+                new Set(available.map(network => network.name))
+
+            const unavailable = []
+
+            for (const name of root.savedConnectionNames) {
+                if (availableNames.has(name))
+                    continue
+
+                unavailable.push(
+                    root.makeUnavailableEntry(name)
+                )
+            }
+
+            unavailable.sort(
+                (a, b) => a.name.localeCompare(b.name)
+            )
+
+            return [...available, ...unavailable]
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -200,6 +292,17 @@ PanelWindow {
         return network.security === WifiSecurityType.Open
     }
 
+    // Shows a lock only for networks with an explicit encryption type.
+    // Open networks are reported as `Unknown` once saved/known, so that
+    // must not be treated as encrypted either.
+    function isNetworkLocked(network) {
+        if (!network)
+            return false
+
+        return network.security !== WifiSecurityType.Open &&
+               network.security !== WifiSecurityType.Unknown
+    }
+
     function bluetoothIcon() {
         if (
             !root.bluetoothAdapter ||
@@ -271,6 +374,47 @@ PanelWindow {
         }
     }
 
+    function powerProfileIcon(profile) {
+        switch (profile) {
+        case PowerProfile.Performance:
+            return "󰓅"
+
+        case PowerProfile.PowerSaver:
+            return "󰾆"
+
+        default:
+            return "󰗑"
+        }
+    }
+
+    function cyclePowerProfile() {
+        if (!PowerProfiles.hasPerformanceProfile) {
+            PowerProfiles.profile =
+                PowerProfiles.profile ===
+                    PowerProfile.PowerSaver
+                        ? PowerProfile.Balanced
+                        : PowerProfile.PowerSaver
+        } else {
+            switch (PowerProfiles.profile) {
+            case PowerProfile.Balanced:
+                PowerProfiles.profile =
+                    PowerProfile.Performance
+                break
+
+            case PowerProfile.Performance:
+                PowerProfiles.profile =
+                    PowerProfile.PowerSaver
+                break
+
+            default:
+                PowerProfiles.profile =
+                    PowerProfile.Balanced
+            }
+        }
+
+        keyboardFocus.forceActiveFocus()
+    }
+
     function toggleBluetooth() {
         if (!bluetoothAdapter)
             return
@@ -284,8 +428,113 @@ PanelWindow {
             !Networking.wifiEnabled
     }
 
+    function toggleWifiExpand() {
+        root.wifiExpanded = !root.wifiExpanded
+
+        root.bluetoothExpanded = false
+
+        if (root.wifiDevice)
+            root.wifiDevice.scannerEnabled =
+                root.wifiExpanded
+    }
+
+    function toggleBluetoothExpand() {
+        root.bluetoothExpanded =
+            !root.bluetoothExpanded
+
+        root.wifiExpanded = false
+
+        if (root.bluetoothAdapter)
+            root.bluetoothAdapter.discovering =
+                root.bluetoothExpanded
+    }
+
+    // Placeholder for a saved network that isn't currently in range.
+    // It carries just enough fields for the saved-network delegate,
+    // with `available: false` so the Connect button stays hidden.
+    function makeUnavailableEntry(name) {
+        return {
+            name: name,
+            known: true,
+            connected: false,
+            available: false,
+            signalStrength: 0
+        }
+    }
+
+    function forgetSaved(network) {
+        if (!network)
+            return
+
+        if (network.available !== false) {
+            network.forget()
+        } else {
+            forgetProcess.command = [
+                "nmcli",
+                "connection",
+                "delete",
+                network.name
+            ]
+            forgetProcess.running = true
+        }
+
+        savedConnectionsRefreshTimer.restart()
+    }
+
     function toggleAirplane() {
         airplaneProcess.running = true
+    }
+
+    function toggleNightMode() {
+        root.nightMode = !root.nightMode
+
+        if (root.nightMode) {
+            nightModeProcess.command = [
+                "sh",
+                "-c",
+                "systemctl --user stop cc-hyprsunset " +
+                "2>/dev/null; " +
+                "systemctl --user reset-failed cc-hyprsunset " +
+                "2>/dev/null; " +
+                "pkill -x hyprsunset 2>/dev/null; " +
+                "systemd-run --user --unit=cc-hyprsunset --collect " +
+                "--quiet hyprsunset --temperature " +
+                root.nightTemperature
+            ]
+        } else {
+            nightModeProcess.command = [
+                "sh",
+                "-c",
+                "systemctl --user stop cc-hyprsunset " +
+                "2>/dev/null; " +
+                "pkill -x hyprsunset 2>/dev/null"
+            ]
+        }
+
+        nightModeProcess.running = true
+    }
+
+    function toggleIdleInhibit() {
+        root.idleInhibited = !root.idleInhibited
+
+        idleInhibitProcess.running = true
+    }
+
+    function setNightTemperature(value) {
+        const temp = Math.max(
+            1000,
+            Math.min(
+                6500,
+                Math.round(value / 100) * 100
+            )
+        )
+
+        root.nightTemperature = temp
+
+        root.persistNightTemperature()
+
+        if (root.nightMode)
+            nightTemperatureTimer.restart()
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -440,7 +689,90 @@ PanelWindow {
                 if (root.wifiDevice)
                     root.wifiDevice.scannerEnabled =
                         true
+
+                savedConnectionsRefreshTimer.restart()
             }
+        }
+    }
+
+    // Reads all saved NetworkManager connection profiles so the saved
+    // list can show networks that are configured but out of range.
+    Process {
+        id: savedConnectionsRead
+
+        command: [
+            "nmcli",
+            "-t",
+            "-f",
+            "NAME,TYPE",
+            "connection",
+            "show"
+        ]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const names = []
+
+                for (
+                    const line of this.text.split("\n")
+                ) {
+                    if (!line)
+                        continue
+
+                    // nmcli -t escapes the field separator as `\:`,
+                    // so split on unescaped colons only.
+                    const fields = []
+                    let field = ""
+
+                    for (
+                        let i = 0;
+                        i < line.length;
+                        ++i
+                    ) {
+                        const ch = line[i]
+
+                        if (
+                            ch === "\\" &&
+                            i + 1 < line.length &&
+                            line[i + 1] === ":"
+                        ) {
+                            field += ":"
+                            i++
+                        } else if (ch === ":") {
+                            fields.push(field)
+                            field = ""
+                        } else {
+                            field += ch
+                        }
+                    }
+
+                    fields.push(field)
+
+                    if (
+                        fields[1] === "802-11-wireless"
+                    )
+                        names.push(fields[0])
+                }
+
+                root.savedConnectionNames = names
+            }
+        }
+    }
+
+    Process {
+        id: forgetProcess
+    }
+
+    // Small delay so nmcli has actually applied a forget/add before the
+    // saved-profile list is re-read.
+    Timer {
+        id: savedConnectionsRefreshTimer
+
+        interval: 150
+        repeat: false
+
+        onTriggered: {
+            savedConnectionsRead.running = true
         }
     }
 
@@ -469,7 +801,7 @@ PanelWindow {
                  * nmcli radio all normally reports:
                  *
                  * WIFI-HW  WIFI  WWAN-HW  WWAN
-                 * enabled  enabled enabled  enabled
+                 * enabled  enabled  enabled  enabled
                  *
                  * Airplane mode is considered active when
                  * all software radios are disabled.
@@ -524,6 +856,210 @@ PanelWindow {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // NIGHT MODE (hyprsunset)
+    // ═══════════════════════════════════════════════════════════════
+
+    Process {
+        id: nightModeProcess
+
+        // Don't sample state immediately — systemd-run starting the
+        // unit and hyprsunset actually forking can lag behind this
+        // process exiting. Debounce via nightModeVerifyTimer instead
+        // of reading state right away, or we can read a stale "off".
+        onExited: {
+            nightModeVerifyTimer.restart()
+        }
+    }
+
+    Process {
+        id: nightModeSetProcess
+
+        onExited: {
+            nightModeVerifyTimer.restart()
+        }
+    }
+
+    // Apply temperature only after the slider stops moving.
+    // This prevents hyprsunset from being restarted for every
+    // tiny slider movement.
+    Timer {
+        id: nightTemperatureTimer
+
+        interval: 120
+        repeat: false
+
+        onTriggered: {
+            if (!root.nightMode)
+                return
+
+            nightModeSetProcess.command = [
+                "sh",
+                "-c",
+                "systemctl --user stop cc-hyprsunset " +
+                "2>/dev/null; " +
+                "systemctl --user reset-failed cc-hyprsunset " +
+                "2>/dev/null; " +
+                "pkill -x hyprsunset 2>/dev/null; " +
+                "systemd-run --user --unit=cc-hyprsunset --collect " +
+                "--quiet hyprsunset --temperature " +
+                root.nightTemperature
+            ]
+
+            nightModeSetProcess.running = true
+        }
+    }
+
+    // Gives systemd-run a moment to actually get the unit + process
+    // up (or down) before we ask it what happened.
+    Timer {
+        id: nightModeVerifyTimer
+
+        interval: 250
+        repeat: false
+
+        onTriggered: {
+            nightModeRead.running = true
+        }
+    }
+
+    Process {
+        id: nightModeRead
+
+        // Check the unit itself rather than a raw process-name match —
+        // more precise, and avoids matching a stray/leftover hyprsunset
+        // that isn't actually the one we manage.
+        command: [
+            "sh",
+            "-c",
+            "systemctl --user is-active --quiet cc-hyprsunset " +
+            "&& echo 1 || echo 0"
+        ]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const output =
+                    this.text.trim()
+                root.nightMode = output === "1"
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // IDLE INHIBITOR (hypridle)
+    // ═══════════════════════════════════════════════════════════════
+
+    // Killing hypridle suppresses all idle actions (lock, suspend, etc.);
+    // restarting it re-enables them. The panel flips the tile state
+    // immediately on click and lets the read-back below confirm it.
+    Process {
+        id: idleInhibitProcess
+
+        command: [
+            "sh",
+            "-c",
+            "if pgrep -x hypridle >/dev/null; then " +
+            "pkill -x hypridle; " +
+            "else " +
+            "setsid -f hypridle >/dev/null 2>&1; " +
+            "fi"
+        ]
+
+        onExited: {
+            idleInhibitVerifyTimer.restart()
+        }
+    }
+
+    // pkill/pgrep can race — give the old process a moment to actually
+    // die before sampling state, same as nightModeVerifyTimer.
+    Timer {
+        id: idleInhibitVerifyTimer
+
+        interval: 250
+        repeat: false
+
+        onTriggered: {
+            idleInhibitRead.running = true
+        }
+    }
+
+    Process {
+        id: idleInhibitRead
+
+        // 1 = hypridle is NOT running = idle is being inhibited.
+        command: [
+            "sh",
+            "-c",
+            "pgrep -x hypridle >/dev/null && echo 0 || echo 1"
+        ]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const output =
+                    this.text.trim()
+                root.idleInhibited = output === "1"
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NIGHT TEMPERATURE PERSISTENCE
+    // ═══════════════════════════════════════════════════════════════
+
+    // This panel can be destroyed and recreated each time it's
+    // opened/closed (e.g. loader-based visibility), which would
+    // otherwise reset nightTemperature back to its declared default
+    // every time. Persist it to a small state file so the slider
+    // position — and the temperature actually applied to
+    // hyprsunset — survive across open/close cycles.
+
+    readonly property string nightTempStateFile:
+        "$HOME/.cache/quickshell/night-temperature"
+
+    function persistNightTemperature() {
+        nightTempWrite.command = [
+            "sh",
+            "-c",
+            "mkdir -p \"$HOME/.cache/quickshell\" && " +
+            "echo " + root.nightTemperature + " > " +
+            root.nightTempStateFile
+        ]
+
+        nightTempWrite.running = true
+    }
+
+    Process {
+        id: nightTempWrite
+    }
+
+    Process {
+        id: nightTempRead
+
+        command: [
+            "sh",
+            "-c",
+            "cat " + root.nightTempStateFile + " 2>/dev/null"
+        ]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const output =
+                    this.text.trim()
+
+                const value =
+                    parseInt(output)
+
+                if (
+                    !isNaN(value) &&
+                    value >= 1000 &&
+                    value <= 6500
+                ) {
+                    root.nightTemperature = value
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // BRIGHTNESS / AIRPLANE UPDATE
     // ═══════════════════════════════════════════════════════════════
 
@@ -543,14 +1079,30 @@ PanelWindow {
     // ═══════════════════════════════════════════════════════════════
 
     Component.onCompleted: {
+        nightTempRead.running = true
+
         brightnessRead.running = true
         airplaneRead.running = true
+        nightModeRead.running = true
+        idleInhibitRead.running = true
+        savedConnectionsRead.running = true
 
         if (wifiDevice)
             wifiDevice.scannerEnabled = true
 
         keyboardFocus.forceActiveFocus()
         focusGrab.active = true
+    }
+
+    // Refresh the saved-profile list whenever it becomes visible.
+    onWifiExpandedChanged: {
+        if (root.wifiExpanded)
+            savedConnectionsRead.running = true
+    }
+
+    onWifiViewChanged: {
+        if (root.wifiView === 1)
+            savedConnectionsRead.running = true
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -613,11 +1165,26 @@ PanelWindow {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // BACKGROUND
+    // BACKGROUND (the visible panel — hugs mainColumn from the top)
     // ═══════════════════════════════════════════════════════════════
 
     Rectangle {
-        anchors.fill: parent
+        id: panelSurface
+
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+        }
+
+        height: root.contentHeight
+
+        // Keep the input mask + hyprland visible-mask in sync with the
+        // panel's current geometry.
+        onHeightChanged: {
+            if (panelRegion)
+                panelRegion.changed()
+        }
 
         radius: 0
 
@@ -629,6 +1196,9 @@ PanelWindow {
         border.color:
             ThemeManager.accent
     }
+
+    readonly property int contentHeight:
+        mainColumn.implicitHeight + root.panelPadding
 
     // ═══════════════════════════════════════════════════════════════
     // MAIN CONTENT
@@ -656,387 +1226,59 @@ PanelWindow {
 
         RowLayout {
             Layout.fillWidth: true
+
             spacing: 8
 
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
             // WIFI
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: root.tileHeight
+            ToggleTile {
+                icon: root.wifiTileIcon()
 
-                radius: 0
+                label:
+                    root.connectedWifi
+                        ? root.connectedWifi.name
+                        : "Wi-Fi"
 
-                color:
+                checked:
                     Networking.wifiEnabled
-                        ? ThemeManager.accent
-                        : wifiToggleArea.containsMouse
-                            ? ThemeManager.surfaceSecondary
-                            : ThemeManager.surface
 
-                border.width: 1
+                expandable: true
 
-                border.color:
+                expanded:
                     root.wifiExpanded
-                        ? ThemeManager.accent
-                        : ThemeManager.surfaceSecondary
 
-                // Main toggle area
-                Rectangle {
-                    anchors {
-                        left: parent.left
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
+                activate:
+                    () => root.toggleWifi()
 
-                    width:
-                        parent.width * 0.75
-
-                    color:
-                        Networking.wifiEnabled
-                            ? ThemeManager.accent
-                            : wifiToggleArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
-
-                    MouseArea {
-                        id: wifiToggleArea
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        cursorShape:
-                            Qt.PointingHandCursor
-
-                        onClicked:
-                            root.toggleWifi()
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-
-                        anchors.margins: 11
-
-                        spacing: 8
-
-                        Text {
-                            text:
-                                root.wifiTileIcon()
-
-                            color:
-                                Networking.wifiEnabled
-                                    ? ThemeManager.background
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize: 22
-                        }
-
-                        Text {
-                            text:
-                                root.connectedWifi
-                                    ? root.connectedWifi.name
-                                    : "Wi-Fi"
-
-                            color:
-                                Networking.wifiEnabled
-                                    ? ThemeManager.background
-                                    : ThemeManager.text
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontSmall + 1
-
-                            font.weight:
-                                Networking.wifiEnabled
-                                    ? ThemeManager.fontBold
-                                    : Font.Normal
-
-                            Layout.fillWidth: true
-
-                            elide:
-                                Text.ElideRight
-                        }
-                    }
-                }
-
-                // Expand area
-                Rectangle {
-                    anchors {
-                        right: parent.right
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
-
-                    width:
-                        parent.width * 0.25
-
-                    // IMPORTANT:
-                    // This area NEVER becomes accent when expanded.
-                    // It only gets the normal hover highlight.
-                    color:
-                        wifiExpandArea.containsMouse
-                            ? ThemeManager.surfaceSecondary
-                            : ThemeManager.surface
-                    border.width:
-                                Networking.wifiEnabled
-                                    ? 2
-                                    : 0
-                    border.color: ThemeManager.accent
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-
-                        width: 1
-
-                        color: Networking.wifiEnabled
-                            ? ThemeManager.accent
-                            : ThemeManager.surfaceSecondary
-                    }
-
-                    MouseArea {
-                        id: wifiExpandArea
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        cursorShape:
-                            Qt.PointingHandCursor
-
-                        onClicked: {
-                            root.wifiExpanded =
-                                !root.wifiExpanded
-
-                            root.bluetoothExpanded =
-                                false
-
-                            if (root.wifiDevice)
-                                root.wifiDevice.scannerEnabled =
-                                    root.wifiExpanded
-                        }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-
-                        text:
-                            root.wifiExpanded
-                                ? "󰅃"
-                                : "󰅀"
-
-                        // ONLY THE POINTER becomes accent
-                        // when expanded.
-                        color:
-                            root.wifiExpanded
-                                ? ThemeManager.accent
-                                : ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize: 18
-                    }
-                }
+                expand:
+                    () => root.toggleWifiExpand()
             }
 
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
             // BLUETOOTH
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: root.tileHeight
+            ToggleTile {
+                icon: root.bluetoothIcon()
 
-                radius: 0
+                label: "Bluetooth"
 
-                color:
+                checked:
                     root.bluetoothAdapter &&
                     root.bluetoothAdapter.enabled
-                        ? ThemeManager.accent
-                        : bluetoothToggleArea.containsMouse
-                            ? ThemeManager.surfaceSecondary
-                            : ThemeManager.surface
 
-                border.width: 1
+                expandable: true
 
-                border.color:
+                expanded:
                     root.bluetoothExpanded
-                        ? ThemeManager.accent
-                        : ThemeManager.surfaceSecondary
 
-                // Main toggle area
-                Rectangle {
-                    anchors {
-                        left: parent.left
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
+                activate:
+                    () => root.toggleBluetooth()
 
-                    width:
-                        parent.width * 0.75
-
-                    color:
-                        root.bluetoothAdapter &&
-                        root.bluetoothAdapter.enabled
-                            ? ThemeManager.accent
-                            : bluetoothToggleArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
-
-                    MouseArea {
-                        id: bluetoothToggleArea
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        cursorShape:
-                            Qt.PointingHandCursor
-
-                        onClicked:
-                            root.toggleBluetooth()
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-
-                        anchors.margins: 11
-
-                        spacing: 8
-
-                        Text {
-                            text:
-                                root.bluetoothIcon()
-
-                            color:
-                                root.bluetoothAdapter &&
-                                root.bluetoothAdapter.enabled
-                                    ? ThemeManager.background
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize: 22
-                        }
-
-                        Text {
-                            text: "Bluetooth"
-
-                            color:
-                                root.bluetoothAdapter &&
-                                root.bluetoothAdapter.enabled
-                                    ? ThemeManager.background
-                                    : ThemeManager.text
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontSmall + 1
-
-                            font.weight:
-                                root.bluetoothAdapter &&
-                                root.bluetoothAdapter.enabled
-                                    ? ThemeManager.fontBold
-                                    : Font.Normal
-
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
-
-                // Expand area
-                Rectangle {
-                    anchors {
-                        right: parent.right
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
-
-                    width:
-                        parent.width * 0.25
-
-                    color:
-                        bluetoothExpandArea.containsMouse
-                            ? ThemeManager.surfaceSecondary
-                            : ThemeManager.surface
-                    border.width:
-                        root.bluetoothAdapter &&
-                        root.bluetoothAdapter.enabled
-                            ? 2
-                            : 0
-                    border.color: ThemeManager.accent
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-
-                        width:
-                        root.bluetoothAdapter &&
-                        root.bluetoothAdapter.enabled
-                            ? 0
-                            : 1
-                        color:
-                            ThemeManager.surfaceSecondary
-                    }
-
-                    MouseArea {
-                        id: bluetoothExpandArea
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        cursorShape:
-                            Qt.PointingHandCursor
-
-                        onClicked: {
-                            root.bluetoothExpanded =
-                                !root.bluetoothExpanded
-
-                            root.wifiExpanded =
-                                false
-
-                            if (root.bluetoothAdapter)
-                                root.bluetoothAdapter.discovering =
-                                    root.bluetoothExpanded
-                        }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-
-                        text:
-                            root.bluetoothExpanded
-                                ? "󰅃"
-                                : "󰅀"
-
-                        // ONLY THE POINTER becomes accent
-                        // when expanded.
-                        color:
-                            root.bluetoothExpanded
-                                ? ThemeManager.accent
-                                : ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize: 18
-                    }
-                }
+                expand:
+                    () => root.toggleBluetoothExpand()
             }
         }
 
@@ -1050,8 +1292,13 @@ PanelWindow {
 
             Layout.fillWidth: true
 
+            // Bounded: the list scrolls instead of growing forever,
+            // so mainColumn's height stays within the fixed window.
             implicitHeight:
-                wifiColumn.implicitHeight + 20
+                Math.min(
+                    root.expandedContentCap,
+                    wifiColumn.implicitHeight
+                ) + 20
 
             radius: 0
 
@@ -1063,24 +1310,1215 @@ PanelWindow {
             border.color:
                 ThemeManager.surfaceSecondary
 
-            ColumnLayout {
-                id: wifiColumn
+            Flickable {
+                id: wifiScroller
 
                 anchors {
                     left: parent.left
                     right: parent.right
                     top: parent.top
+                    bottom: parent.bottom
                 }
 
                 anchors.margins: 10
 
-                spacing: 6
+                clip: true
+
+                contentWidth: width
+                contentHeight:
+                    wifiColumn.implicitHeight
+
+                interactive:
+                    contentHeight > height
 
                 ColumnLayout {
-                    visible:
-                        root.wifiView === 0
+                    id: wifiColumn
 
-                    Layout.fillWidth: true
+                    width:
+                        wifiScroller.width
+
+                    spacing: 6
+
+                    // ───────────────────────────────────────────────
+                    // WIFI LIST
+                    // ───────────────────────────────────────────────
+
+                    ColumnLayout {
+                        visible:
+                            root.wifiView === 0
+
+                        Layout.fillWidth: true
+
+                        spacing: 6
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                text: "Wi-Fi"
+
+                                color:
+                                    ThemeManager.text
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize:
+                                    ThemeManager.fontSmall + 1
+
+                                font.weight:
+                                    ThemeManager.fontBold
+
+                                Layout.fillWidth: true
+                            }
+
+                            Rectangle {
+                                width: 28
+                                height: 28
+
+                                color:
+                                    wifiRefreshArea.containsMouse
+                                        ? ThemeManager.surfaceSecondary
+                                        : ThemeManager.surface
+
+                                MouseArea {
+                                    id: wifiRefreshArea
+
+                                    anchors.fill: parent
+
+                                    hoverEnabled: true
+
+                                    cursorShape:
+                                        Qt.PointingHandCursor
+
+                                    onClicked: {
+                                        if (root.wifiDevice)
+                                            root.wifiDevice.scannerEnabled =
+                                                true
+                                    }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+
+                                    text: "󰑐"
+
+                                    color:
+                                        root.wifiDevice &&
+                                        root.wifiDevice.scannerEnabled
+                                            ? ThemeManager.accent
+                                            : ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 16
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight:
+                                root.networkRowHeight
+
+                            color:
+                                addNetworkRowArea.containsMouse
+                                    ? ThemeManager.surfaceSecondary
+                                    : ThemeManager.surface
+
+                            border.width: 1
+                            border.color:
+                                ThemeManager.surfaceSecondary
+
+                            RowLayout {
+                                anchors.fill: parent
+
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+
+                                spacing: 9
+
+                                Text {
+                                    text: "󰐕"
+
+                                    color:
+                                        ThemeManager.accent
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 19
+                                }
+
+                                Text {
+                                    text: "Add Network"
+
+                                    color:
+                                        ThemeManager.text
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize:
+                                        ThemeManager.fontTiny + 1
+
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: "󰅂"
+
+                                    color:
+                                        ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 17
+                                }
+                            }
+
+                            MouseArea {
+                                id: addNetworkRowArea
+
+                                anchors.fill: parent
+
+                                hoverEnabled: true
+
+                                cursorShape:
+                                    Qt.PointingHandCursor
+
+                                onClicked:
+                                    root.wifiView = 2
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight:
+                                root.networkRowHeight
+
+                            color:
+                                savedNetworksRowArea.containsMouse
+                                    ? ThemeManager.surfaceSecondary
+                                    : ThemeManager.surface
+
+                            border.width: 1
+                            border.color:
+                                ThemeManager.surfaceSecondary
+
+                            RowLayout {
+                                anchors.fill: parent
+
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+
+                                spacing: 9
+
+                                Text {
+                                    text: "󰿆"
+
+                                    color:
+                                        ThemeManager.accent
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 19
+                                }
+
+                                Text {
+                                    text: "View Saved Networks"
+
+                                    color:
+                                        ThemeManager.text
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize:
+                                        ThemeManager.fontTiny + 1
+
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: "󰅂"
+
+                                    color:
+                                        ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 17
+                                }
+                            }
+
+                            MouseArea {
+                                id: savedNetworksRowArea
+
+                                anchors.fill: parent
+
+                                hoverEnabled: true
+
+                                cursorShape:
+                                    Qt.PointingHandCursor
+
+                                onClicked:
+                                    root.wifiView = 1
+                            }
+                        }
+
+                        Repeater {
+                            model:
+                                wifiNetworksModel
+
+                            delegate: Rectangle {
+                                required property var modelData
+
+                                Layout.fillWidth: true
+
+                                Layout.preferredHeight:
+                                    root.networkRowHeight
+
+                                color:
+                                    networkArea.containsMouse
+                                        ? ThemeManager.surfaceSecondary
+                                        : modelData.connected
+                                            ? ThemeManager.surfaceSecondary
+                                            : ThemeManager.surface
+                                border.width: 1
+
+                                border.color:
+                                    modelData.connected
+                                        ? ThemeManager.accent
+                                        : ThemeManager.surfaceSecondary
+
+                                RowLayout {
+                                    anchors.fill: parent
+
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 7
+
+                                    spacing: 8
+
+                                    Text {
+                                        text:
+                                            root.wifiIcon(
+                                                modelData
+                                            )
+
+                                        color:
+                                            modelData.connected
+                                                ? ThemeManager.info
+                                                : ThemeManager.textMuted
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize: 18
+                                    }
+
+                                    Text {
+                                        text:
+                                            modelData.name
+
+                                        color:
+                                            ThemeManager.text
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize:
+                                            ThemeManager.fontTiny + 1
+
+                                        Layout.fillWidth: true
+
+                                        elide:
+                                            Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text:
+                                            root.isNetworkLocked(modelData)
+                                                ? "󰌾"
+                                                : ""
+
+                                        color:
+                                            ThemeManager.textMuted
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize: 14
+                                    }
+
+                                    Rectangle {
+                                        visible:
+                                            !modelData.connected
+
+                                        width: 64
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            connectNetworkArea.containsMouse
+                                                ? ThemeManager.accentDim
+                                                : ThemeManager.accent
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text:
+                                                modelData.known
+                                                    ? "Connect"
+                                                    : "Join"
+
+                                            color:
+                                                ThemeManager.background
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize:
+                                                ThemeManager.fontTiny + 1
+
+                                            font.weight:
+                                                ThemeManager.fontBold
+                                        }
+
+                                        MouseArea {
+                                            id: connectNetworkArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                root.connectWifi(
+                                                    modelData
+                                                )
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible:
+                                            modelData.connected
+
+                                        width: 82
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            disconnectNetworkArea.containsMouse
+                                                ? ThemeManager.surface
+                                                : ThemeManager.backgroundSecondary
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text: "Disconnect"
+
+                                            color:
+                                                ThemeManager.textMuted
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize:
+                                                ThemeManager.fontTiny + 1
+                                        }
+
+                                        MouseArea {
+                                            id: disconnectNetworkArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                modelData.disconnect()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible:
+                                            modelData.known &&
+                                            !modelData.connected
+
+                                        width: 27
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            forgetNetworkArea.containsMouse
+                                                ? ThemeManager.danger
+                                                : ThemeManager.backgroundSecondary
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text: "×"
+
+                                            color:
+                                                forgetNetworkArea.containsMouse
+                                                    ? ThemeManager.backgroundSecondary
+                                                    : ThemeManager.danger
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize: 16
+                                        }
+
+                                        MouseArea {
+                                            id: forgetNetworkArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                modelData.forget()
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: networkArea
+
+                                    anchors.fill: parent
+
+                                    z: -1
+
+                                    hoverEnabled: true
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible:
+                                root.wifiDevice &&
+                                root.wifiDevice.networks.values.length === 0
+
+                            text: "No networks found."
+
+                            color:
+                                ThemeManager.textMuted
+
+                            font.family:
+                                ThemeManager.fontFamily
+
+                            font.pixelSize:
+                                ThemeManager.fontTiny + 1
+
+                            Layout.topMargin: 4
+                        }
+                    }
+
+                    // ───────────────────────────────────────────────
+                    // SAVED NETWORKS
+                    // ───────────────────────────────────────────────
+
+                    ColumnLayout {
+                        visible:
+                            root.wifiView === 1
+
+                        Layout.fillWidth: true
+
+                        spacing: 6
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Rectangle {
+                                width: 28
+                                height: 28
+
+                                color:
+                                    savedBackArea.containsMouse
+                                        ? ThemeManager.surfaceSecondary
+                                        : ThemeManager.surface
+
+                                Text {
+                                    anchors.centerIn: parent
+
+                                    text: "󰁍"
+
+                                    color:
+                                        ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 16
+                                }
+
+                                MouseArea {
+                                    id: savedBackArea
+
+                                    anchors.fill: parent
+
+                                    hoverEnabled: true
+
+                                    cursorShape:
+                                        Qt.PointingHandCursor
+
+                                    onClicked:
+                                        root.wifiView = 0
+                                }
+                            }
+
+                            Text {
+                                text: "Saved Networks"
+
+                                color:
+                                    ThemeManager.text
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize:
+                                    ThemeManager.fontSmall + 1
+
+                                font.weight:
+                                    ThemeManager.fontBold
+
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Repeater {
+                            model:
+                                savedWifiModel
+
+                            delegate: Rectangle {
+                                required property var modelData
+
+                                Layout.fillWidth: true
+
+                                Layout.preferredHeight:
+                                    root.networkRowHeight
+
+                                color:
+                                    savedNetworkArea.containsMouse
+                                        ? ThemeManager.surfaceSecondary
+                                        : modelData.connected
+                                            ? ThemeManager.surfaceSecondary
+                                            : ThemeManager.surface
+
+                                border.width: 1
+
+                                border.color:
+                                    modelData.connected
+                                        ? ThemeManager.accent
+                                        : ThemeManager.surfaceSecondary
+
+                                RowLayout {
+                                    anchors.fill: parent
+
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 7
+
+                                    spacing: 8
+
+                                    Text {
+                                        text:
+                                            root.wifiIcon(
+                                                modelData
+                                            )
+
+                                        color:
+                                            modelData.connected
+                                                ? ThemeManager.info
+                                                : ThemeManager.textMuted
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize: 18
+                                    }
+
+                                    Text {
+                                        text:
+                                            modelData.name
+
+                                        color:
+                                            ThemeManager.text
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize:
+                                            ThemeManager.fontTiny + 1
+
+                                        Layout.fillWidth: true
+
+                                        elide:
+                                            Text.ElideRight
+                                    }
+
+                                    Rectangle {
+                                        visible:
+                                            modelData.connected
+
+                                        width: 82
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            savedDisconnectArea.containsMouse
+                                                ? ThemeManager.surface
+                                                : ThemeManager.backgroundSecondary
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text: "Disconnect"
+
+                                            color:
+                                                ThemeManager.textMuted
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize:
+                                                ThemeManager.fontTiny + 1
+                                        }
+
+                                        MouseArea {
+                                            id: savedDisconnectArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                modelData.disconnect()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible:
+                                            !modelData.connected &&
+                                            modelData.available !== false
+
+                                        width: 64
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            savedConnectArea.containsMouse
+                                                ? ThemeManager.accentDim
+                                                : ThemeManager.accent
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text: "Connect"
+
+                                            color:
+                                                ThemeManager.background
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize:
+                                                ThemeManager.fontTiny + 1
+
+                                            font.weight:
+                                                ThemeManager.fontBold
+                                        }
+
+                                        MouseArea {
+                                            id: savedConnectArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                modelData.connect()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 27
+                                        height:
+                                            root.actionHeight
+
+                                        color:
+                                            savedForgetArea.containsMouse
+                                                ? ThemeManager.danger
+                                                : ThemeManager.backgroundSecondary
+
+                                        Text {
+                                            anchors.centerIn: parent
+
+                                            text: "×"
+
+                                            color:
+                                                savedForgetArea.containsMouse
+                                                    ? ThemeManager.backgroundSecondary
+                                                    : ThemeManager.danger
+
+                                            font.family:
+                                                ThemeManager.fontFamily
+
+                                            font.pixelSize: 16
+                                        }
+
+                                        MouseArea {
+                                            id: savedForgetArea
+
+                                            anchors.fill: parent
+
+                                            hoverEnabled: true
+
+                                            cursorShape:
+                                                Qt.PointingHandCursor
+
+                                            onClicked:
+                                                root.forgetSaved(modelData)
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: savedNetworkArea
+
+                                    anchors.fill: parent
+
+                                    z: -1
+
+                                    hoverEnabled: true
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible:
+                                savedWifiModel.values.length === 0
+
+                            text: "No saved networks."
+
+                            color:
+                                ThemeManager.textMuted
+
+                            font.family:
+                                ThemeManager.fontFamily
+
+                            font.pixelSize:
+                                ThemeManager.fontTiny + 1
+
+                            Layout.topMargin: 4
+                        }
+                    }
+
+                    // ───────────────────────────────────────────────
+                    // ADD NETWORK
+                    // ───────────────────────────────────────────────
+
+                    ColumnLayout {
+                        visible:
+                            root.wifiView === 2
+
+                        Layout.fillWidth: true
+
+                        spacing: 8
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Rectangle {
+                                width: 28
+                                height: 28
+
+                                color:
+                                    addBackArea.containsMouse
+                                        ? ThemeManager.surfaceSecondary
+                                        : ThemeManager.surface
+
+                                Text {
+                                    anchors.centerIn: parent
+
+                                    text: "󰁍"
+
+                                    color:
+                                        ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 16
+                                }
+
+                                MouseArea {
+                                    id: addBackArea
+
+                                    anchors.fill: parent
+
+                                    hoverEnabled: true
+
+                                    cursorShape:
+                                        Qt.PointingHandCursor
+
+                                    onClicked:
+                                        root.wifiView = 0
+                                }
+                            }
+
+                            Text {
+                                text: "Add Network"
+
+                                color:
+                                    ThemeManager.text
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize:
+                                    ThemeManager.fontSmall + 1
+
+                                font.weight:
+                                    ThemeManager.fontBold
+
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        TextField {
+                            id: addNetworkSsidField
+
+                            Layout.fillWidth: true
+
+                            Layout.preferredHeight:
+                                root.networkRowHeight
+
+                            placeholderText:
+                                "Network name"
+
+                            placeholderTextColor:
+                                ThemeManager.textMuted
+
+                            text:
+                                root.addNetworkName
+
+                            onTextChanged:
+                                root.addNetworkName = text
+
+                            color:
+                                ThemeManager.text
+
+                            selectionColor:
+                                ThemeManager.accent
+
+                            selectedTextColor:
+                                ThemeManager.background
+
+                            font.family:
+                                ThemeManager.fontFamily
+
+                            font.pixelSize:
+                                ThemeManager.fontTiny + 1
+
+                            leftPadding: 10
+                            rightPadding: 10
+
+                            background: Rectangle {
+                                color:
+                                    ThemeManager.surface
+
+                                border.width: 1
+
+                                border.color:
+                                    addNetworkSsidField.activeFocus
+                                        ? ThemeManager.accent
+                                        : ThemeManager.surfaceSecondary
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+
+                            Layout.preferredHeight:
+                                root.networkRowHeight
+
+                            color:
+                                openNetworkArea.containsMouse
+                                    ? ThemeManager.surfaceSecondary
+                                    : ThemeManager.surface
+
+                            border.width: 1
+
+                            border.color:
+                                ThemeManager.surfaceSecondary
+
+                            RowLayout {
+                                anchors.fill: parent
+
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+
+                                Text {
+                                    text: "󰖪"
+
+                                    color:
+                                        root.addNetworkOpen
+                                            ? ThemeManager.accent
+                                            : ThemeManager.textMuted
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize: 18
+                                }
+
+                                Text {
+                                    text: "Open network"
+
+                                    color:
+                                        ThemeManager.text
+
+                                    font.family:
+                                        ThemeManager.fontFamily
+
+                                    font.pixelSize:
+                                        ThemeManager.fontTiny + 1
+
+                                    Layout.fillWidth: true
+                                }
+
+                                Rectangle {
+                                    width: 38
+                                    height: 22
+
+                                    color:
+                                        root.addNetworkOpen
+                                            ? ThemeManager.accent
+                                            : ThemeManager.surfaceSecondary
+
+                                    border.width: 1
+
+                                    border.color:
+                                        root.addNetworkOpen
+                                            ? ThemeManager.accent
+                                            : ThemeManager.overlay
+
+                                    Rectangle {
+                                        width: 16
+                                        height: 16
+
+                                        anchors.verticalCenter:
+                                            parent.verticalCenter
+
+                                        x:
+                                            root.addNetworkOpen
+                                                ? parent.width - width - 3
+                                                : 3
+
+                                        color:
+                                            root.addNetworkOpen
+                                                ? ThemeManager.background
+                                                : ThemeManager.textMuted
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: openNetworkArea
+
+                                anchors.fill: parent
+
+                                hoverEnabled: true
+
+                                cursorShape:
+                                    Qt.PointingHandCursor
+
+                                onClicked:
+                                    root.addNetworkOpen =
+                                        !root.addNetworkOpen
+                            }
+                        }
+
+                        TextField {
+                            id: addNetworkPasswordField
+
+                            visible:
+                                !root.addNetworkOpen
+
+                            Layout.fillWidth: true
+
+                            Layout.preferredHeight:
+                                root.networkRowHeight
+
+                            placeholderText:
+                                "Password"
+
+                            placeholderTextColor:
+                                ThemeManager.textMuted
+
+                            echoMode:
+                                TextInput.Password
+
+                            text:
+                                root.addNetworkPassword
+
+                            onTextChanged:
+                                root.addNetworkPassword =
+                                    text
+
+                            color:
+                                ThemeManager.text
+
+                            selectionColor:
+                                ThemeManager.accent
+
+                            selectedTextColor:
+                                ThemeManager.background
+
+                            font.family:
+                                ThemeManager.fontFamily
+
+                            font.pixelSize:
+                                ThemeManager.fontTiny + 1
+
+                            leftPadding: 10
+                            rightPadding: 10
+
+                            background: Rectangle {
+                                color:
+                                    ThemeManager.surface
+
+                                border.width: 1
+
+                                border.color:
+                                    addNetworkPasswordField.activeFocus
+                                        ? ThemeManager.accent
+                                        : ThemeManager.surfaceSecondary
+                            }
+
+                            Keys.onReturnPressed:
+                                root.addNetwork()
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+
+                            Layout.preferredHeight:
+                                root.actionHeight
+
+                            color:
+                                addNetworkButtonArea.containsMouse
+                                    ? ThemeManager.accentDim
+                                    : ThemeManager.accent
+
+                            Text {
+                                anchors.centerIn: parent
+
+                                text: "Add Network"
+
+                                color:
+                                    ThemeManager.background
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize:
+                                    ThemeManager.fontTiny + 1
+
+                                font.weight:
+                                    ThemeManager.fontBold
+                            }
+
+                            MouseArea {
+                                id: addNetworkButtonArea
+
+                                anchors.fill: parent
+
+                                hoverEnabled: true
+
+                                cursorShape:
+                                    Qt.PointingHandCursor
+
+                                onClicked:
+                                    root.addNetwork()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // BLUETOOTH EXPANDED
+        // ═══════════════════════════════════════════════════════════
+
+        Rectangle {
+            visible:
+                root.bluetoothExpanded
+
+            Layout.fillWidth: true
+
+            implicitHeight:
+                Math.min(
+                    root.expandedContentCap,
+                    bluetoothColumn.implicitHeight
+                ) + 20
+
+            radius: 0
+
+            color:
+                ThemeManager.backgroundSecondary
+
+            border.width: 1
+
+            border.color:
+                ThemeManager.surfaceSecondary
+
+            Flickable {
+                id: bluetoothScroller
+
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+
+                anchors.margins: 10
+
+                clip: true
+
+                contentWidth: width
+                contentHeight:
+                    bluetoothColumn.implicitHeight
+
+                interactive:
+                    contentHeight > height
+
+                ColumnLayout {
+                    id: bluetoothColumn
+
+                    width:
+                        bluetoothScroller.width
 
                     spacing: 6
 
@@ -1088,7 +2526,7 @@ PanelWindow {
                         Layout.fillWidth: true
 
                         Text {
-                            text: "Wi-Fi"
+                            text: "Bluetooth Devices"
 
                             color:
                                 ThemeManager.text
@@ -1110,12 +2548,29 @@ PanelWindow {
                             height: 28
 
                             color:
-                                wifiRefreshArea.containsMouse
+                                bluetoothRefreshArea.containsMouse
                                     ? ThemeManager.surfaceSecondary
                                     : ThemeManager.surface
 
+                            Text {
+                                anchors.centerIn: parent
+
+                                text: "󰑐"
+
+                                color:
+                                    root.bluetoothAdapter &&
+                                    root.bluetoothAdapter.discovering
+                                        ? ThemeManager.accent
+                                        : ThemeManager.textMuted
+
+                                font.family:
+                                    ThemeManager.fontFamily
+
+                                font.pixelSize: 16
+                            }
+
                             MouseArea {
-                                id: wifiRefreshArea
+                                id: bluetoothRefreshArea
 
                                 anchors.fill: parent
 
@@ -1125,188 +2580,37 @@ PanelWindow {
                                     Qt.PointingHandCursor
 
                                 onClicked: {
-                                    if (root.wifiDevice)
-                                        root.wifiDevice.scannerEnabled =
-                                            true
+                                    if (root.bluetoothAdapter)
+                                        root.bluetoothAdapter.discovering =
+                                            !root.bluetoothAdapter.discovering
                                 }
                             }
-
-                            Text {
-                                anchors.centerIn: parent
-
-                                text: "󰑐"
-
-                                color:
-                                    root.wifiDevice &&
-                                    root.wifiDevice.scannerEnabled
-                                        ? ThemeManager.accent
-                                        : ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 16
-                            }
                         }
                     }
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight:
-                            root.networkRowHeight
+                    Text {
+                        visible:
+                            !root.bluetoothAdapter ||
+                            !root.bluetoothAdapter.enabled
+
+                        text:
+                            "Bluetooth is disabled."
 
                         color:
-                            addNetworkRowArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
+                            ThemeManager.textMuted
 
-                        border.width: 1
-                        border.color:
-                            ThemeManager.surfaceSecondary
+                        font.family:
+                            ThemeManager.fontFamily
 
-                        RowLayout {
-                            anchors.fill: parent
-
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-
-                            spacing: 9
-
-                            Text {
-                                text: "󰐕"
-
-                                color:
-                                    ThemeManager.accent
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 19
-                            }
-
-                            Text {
-                                text: "Add Network"
-
-                                color:
-                                    ThemeManager.text
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize:
-                                    ThemeManager.fontTiny + 1
-
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: "󰅂"
-
-                                color:
-                                    ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 17
-                            }
-                        }
-
-                        MouseArea {
-                            id: addNetworkRowArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked:
-                                root.wifiView = 2
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight:
-                            root.networkRowHeight
-
-                        color:
-                            savedNetworksRowArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
-
-                        border.width: 1
-                        border.color:
-                            ThemeManager.surfaceSecondary
-
-                        RowLayout {
-                            anchors.fill: parent
-
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-
-                            spacing: 9
-
-                            Text {
-                                text: "󰿆"
-
-                                color:
-                                    ThemeManager.accent
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 19
-                            }
-
-                            Text {
-                                text: "View Saved Networks"
-
-                                color:
-                                    ThemeManager.text
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize:
-                                    ThemeManager.fontTiny + 1
-
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: "󰅂"
-
-                                color:
-                                    ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 17
-                            }
-                        }
-
-                        MouseArea {
-                            id: savedNetworksRowArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked:
-                                root.wifiView = 1
-                        }
+                        font.pixelSize:
+                            ThemeManager.fontTiny + 1
                     }
 
                     Repeater {
                         model:
-                            wifiNetworksModel
+                            root.bluetoothAdapter
+                                ? root.bluetoothAdapter.devices
+                                : null
 
                         delegate: Rectangle {
                             required property var modelData
@@ -1314,14 +2618,15 @@ PanelWindow {
                             Layout.fillWidth: true
 
                             Layout.preferredHeight:
-                                root.networkRowHeight
+                                root.networkRowHeight + 6
 
                             color:
-                                networkArea.containsMouse
+                                bluetoothDeviceArea.containsMouse
                                     ? ThemeManager.surfaceSecondary
                                     : modelData.connected
                                         ? ThemeManager.surfaceSecondary
                                         : ThemeManager.surface
+
                             border.width: 1
 
                             border.color:
@@ -1338,10 +2643,7 @@ PanelWindow {
                                 spacing: 8
 
                                 Text {
-                                    text:
-                                        root.wifiIcon(
-                                            modelData
-                                        )
+                                    text: "󰂯"
 
                                     color:
                                         modelData.connected
@@ -1351,63 +2653,81 @@ PanelWindow {
                                     font.family:
                                         ThemeManager.fontFamily
 
-                                    font.pixelSize: 18
+                                    font.pixelSize: 19
                                 }
 
-                                Text {
-                                    text:
-                                        modelData.name
-
-                                    color:
-                                        ThemeManager.text
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-
+                                ColumnLayout {
                                     Layout.fillWidth: true
 
-                                    elide:
-                                        Text.ElideRight
-                                }
+                                    spacing: 1
 
-                                Text {
-                                    text:
-                                        root.isOpenWifi(modelData)
-                                            ? ""
-                                            : "󰌾"
+                                    Text {
+                                        text:
+                                            modelData.name ||
+                                            modelData.deviceName ||
+                                            "Unknown device"
 
-                                    color:
-                                        ThemeManager.textMuted
+                                        color:
+                                            ThemeManager.text
 
-                                    font.family:
-                                        ThemeManager.fontFamily
+                                        font.family:
+                                            ThemeManager.fontFamily
 
-                                    font.pixelSize: 14
+                                        font.pixelSize:
+                                            ThemeManager.fontTiny + 1
+
+                                        Layout.fillWidth: true
+
+                                        elide:
+                                            Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text: {
+                                            if (modelData.pairing)
+                                                return "Pairing…"
+
+                                            if (modelData.connected)
+                                                return "Connected"
+
+                                            if (modelData.paired)
+                                                return "Saved"
+
+                                            return "Available"
+                                        }
+
+                                        color:
+                                            modelData.connected
+                                                ? ThemeManager.success
+                                                : ThemeManager.textMuted
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize:
+                                            ThemeManager.fontTiny + 1
+                                    }
                                 }
 
                                 Rectangle {
                                     visible:
-                                        !modelData.connected
+                                        !modelData.paired &&
+                                        !modelData.pairing
 
                                     width: 64
+
                                     height:
                                         root.actionHeight
 
                                     color:
-                                        connectNetworkArea.containsMouse
+                                        bluetoothPairArea.containsMouse
                                             ? ThemeManager.accentDim
                                             : ThemeManager.accent
 
                                     Text {
                                         anchors.centerIn: parent
 
-                                        text:
-                                            modelData.known
-                                                ? "Connect"
-                                                : "Join"
+                                        text: "Pair"
 
                                         color:
                                             ThemeManager.background
@@ -1423,7 +2743,7 @@ PanelWindow {
                                     }
 
                                     MouseArea {
-                                        id: connectNetworkArea
+                                        id: bluetoothPairArea
 
                                         anchors.fill: parent
 
@@ -1433,328 +2753,22 @@ PanelWindow {
                                             Qt.PointingHandCursor
 
                                         onClicked:
-                                            root.connectWifi(
-                                                modelData
-                                            )
+                                            modelData.pair()
                                     }
                                 }
 
                                 Rectangle {
                                     visible:
-                                        modelData.connected
-
-                                    width: 82
-                                    height:
-                                        root.actionHeight
-
-                                    color:
-                                        disconnectNetworkArea.containsMouse
-                                            ? ThemeManager.surface
-                                            : ThemeManager.backgroundSecondary
-
-                                    Text {
-                                        anchors.centerIn: parent
-
-                                        text: "Disconnect"
-
-                                        color:
-                                            ThemeManager.textMuted
-
-                                        font.family:
-                                            ThemeManager.fontFamily
-
-                                        font.pixelSize:
-                                            ThemeManager.fontTiny + 1
-                                    }
-
-                                    MouseArea {
-                                        id: disconnectNetworkArea
-
-                                        anchors.fill: parent
-
-                                        hoverEnabled: true
-
-                                        cursorShape:
-                                            Qt.PointingHandCursor
-
-                                        onClicked:
-                                            modelData.disconnect()
-                                    }
-                                }
-
-                                Rectangle {
-                                    visible:
-                                        modelData.known &&
-                                        !modelData.connected
-
-                                    width: 27
-                                    height:
-                                        root.actionHeight
-
-                                    color:
-                                        forgetNetworkArea.containsMouse
-                                            ? ThemeManager.danger
-                                            : ThemeManager.backgroundSecondary
-
-                                    Text {
-                                        anchors.centerIn: parent
-
-                                        text: "×"
-
-                                        color:
-                                          forgetNetworkArea.containsMouse
-                                            ? ThemeManager.backgroundSecondary
-                                            : ThemeManager.danger
-
-                                        font.family:
-                                            ThemeManager.fontFamily
-
-                                        font.pixelSize: 16
-                                    }
-
-                                    MouseArea {
-                                        id: forgetNetworkArea
-
-                                        anchors.fill: parent
-
-                                        hoverEnabled: true
-
-                                        cursorShape:
-                                            Qt.PointingHandCursor
-
-                                        onClicked:
-                                            modelData.forget()
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                id: networkArea
-
-                                anchors.fill: parent
-
-                                z: -1
-
-                                hoverEnabled: true
-                            }
-                        }
-                    }
-
-                    Text {
-                        visible:
-                            root.wifiDevice &&
-                            root.wifiDevice.networks.values.length === 0
-
-                        text: "No networks found."
-
-                        color:
-                            ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontTiny + 1
-
-                        Layout.topMargin: 4
-                    }
-                }
-
-                // ═══════════════════════════════════════════════════
-                // SAVED NETWORKS
-                // ═══════════════════════════════════════════════════
-
-                ColumnLayout {
-                    visible:
-                        root.wifiView === 1
-
-                    Layout.fillWidth: true
-
-                    spacing: 6
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Rectangle {
-                            width: 28
-                            height: 28
-
-                            color:
-                                savedBackArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                            Text {
-                                anchors.centerIn: parent
-
-                                text: "󰁍"
-
-                                color:
-                                    ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 16
-                            }
-
-                            MouseArea {
-                                id: savedBackArea
-
-                                anchors.fill: parent
-
-                                hoverEnabled: true
-
-                                cursorShape:
-                                    Qt.PointingHandCursor
-
-                                onClicked:
-                                    root.wifiView = 0
-                            }
-                        }
-
-                        Text {
-                            text: "Saved Networks"
-
-                            color:
-                                ThemeManager.text
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontSmall + 1
-
-                            font.weight:
-                                ThemeManager.fontBold
-
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    Repeater {
-                        model:
-                            savedWifiModel
-
-                        delegate: Rectangle {
-                            required property var modelData
-
-                            Layout.fillWidth: true
-
-                            Layout.preferredHeight:
-                                root.networkRowHeight
-
-                            color:
-                                savedNetworkArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : modelData.connected
-                                        ? ThemeManager.surfaceSecondary
-                                        : ThemeManager.surface
-
-                            border.width: 1
-
-                            border.color:
-                                modelData.connected
-                                    ? ThemeManager.accent
-                                    : ThemeManager.surfaceSecondary
-
-                            RowLayout {
-                                anchors.fill: parent
-
-                                anchors.leftMargin: 9
-                                anchors.rightMargin: 7
-
-                                spacing: 8
-
-                                Text {
-                                    text:
-                                        root.wifiIcon(
-                                            modelData
-                                        )
-
-                                    color:
-                                        modelData.connected
-                                            ? ThemeManager.info
-                                            : ThemeManager.textMuted
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize: 18
-                                }
-
-                                Text {
-                                    text:
-                                        modelData.name
-
-                                    color:
-                                        ThemeManager.text
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-
-                                    Layout.fillWidth: true
-
-                                    elide:
-                                        Text.ElideRight
-                                }
-
-                                Rectangle {
-                                    visible:
-                                        modelData.connected
-
-                                    width: 82
-                                    height:
-                                        root.actionHeight
-
-                                    color:
-                                        savedDisconnectArea.containsMouse
-                                            ? ThemeManager.surface
-                                            : ThemeManager.backgroundSecondary
-
-                                    Text {
-                                        anchors.centerIn: parent
-
-                                        text: "Disconnect"
-
-                                        color:
-                                            ThemeManager.textMuted
-
-                                        font.family:
-                                            ThemeManager.fontFamily
-
-                                        font.pixelSize:
-                                            ThemeManager.fontTiny + 1
-                                    }
-
-                                    MouseArea {
-                                        id: savedDisconnectArea
-
-                                        anchors.fill: parent
-
-                                        hoverEnabled: true
-
-                                        cursorShape:
-                                            Qt.PointingHandCursor
-
-                                        onClicked:
-                                            modelData.disconnect()
-                                    }
-                                }
-
-                                Rectangle {
-                                    visible:
+                                        modelData.paired &&
                                         !modelData.connected
 
                                     width: 64
+
                                     height:
                                         root.actionHeight
 
                                     color:
-                                        savedConnectArea.containsMouse
+                                        bluetoothConnectArea.containsMouse
                                             ? ThemeManager.accentDim
                                             : ThemeManager.accent
 
@@ -1777,7 +2791,7 @@ PanelWindow {
                                     }
 
                                     MouseArea {
-                                        id: savedConnectArea
+                                        id: bluetoothConnectArea
 
                                         anchors.fill: parent
 
@@ -1792,13 +2806,61 @@ PanelWindow {
                                 }
 
                                 Rectangle {
-                                    width: 27
+                                    visible:
+                                        modelData.connected
+
+                                    width: 82
+
                                     height:
                                         root.actionHeight
 
                                     color:
-                                        savedForgetArea.containsMouse
-                                            ? ThemeManager.danger 
+                                        bluetoothDisconnectArea.containsMouse
+                                            ? ThemeManager.surface
+                                            : ThemeManager.backgroundSecondary
+
+                                    Text {
+                                        anchors.centerIn: parent
+
+                                        text: "Disconnect"
+
+                                        color:
+                                            ThemeManager.textMuted
+
+                                        font.family:
+                                            ThemeManager.fontFamily
+
+                                        font.pixelSize:
+                                            ThemeManager.fontTiny + 1
+                                    }
+
+                                    MouseArea {
+                                        id: bluetoothDisconnectArea
+
+                                        anchors.fill: parent
+
+                                        hoverEnabled: true
+
+                                        cursorShape:
+                                            Qt.PointingHandCursor
+
+                                        onClicked:
+                                            modelData.disconnect()
+                                    }
+                                }
+
+                                Rectangle {
+                                    visible:
+                                        modelData.paired
+
+                                    width: 27
+
+                                    height:
+                                        root.actionHeight
+
+                                    color:
+                                        bluetoothForgetArea.containsMouse
+                                            ? ThemeManager.danger
                                             : ThemeManager.backgroundSecondary
 
                                     Text {
@@ -1807,9 +2869,9 @@ PanelWindow {
                                         text: "×"
 
                                         color:
-                                          savedForgetArea.containsMouse
-                                          ? ThemeManager.backgroundSecondary
-                                          : ThemeManager.danger
+                                            bluetoothForgetArea.containsMouse
+                                                ? ThemeManager.backgroundSecondary
+                                                : ThemeManager.danger
 
                                         font.family:
                                             ThemeManager.fontFamily
@@ -1818,11 +2880,12 @@ PanelWindow {
                                     }
 
                                     MouseArea {
-                                        id: savedForgetArea
+                                        id: bluetoothForgetArea
 
                                         anchors.fill: parent
 
                                         hoverEnabled: true
+
                                         cursorShape:
                                             Qt.PointingHandCursor
 
@@ -1833,7 +2896,7 @@ PanelWindow {
                             }
 
                             MouseArea {
-                                id: savedNetworkArea
+                                id: bluetoothDeviceArea
 
                                 anchors.fill: parent
 
@@ -1843,785 +2906,12 @@ PanelWindow {
                             }
                         }
                     }
-
-                    Text {
-                        visible:
-                            savedWifiModel.values.length === 0
-
-                        text: "No saved networks."
-
-                        color:
-                            ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontTiny + 1
-
-                        Layout.topMargin: 4
-                    }
-                }
-
-                // ═══════════════════════════════════════════════════
-                // ADD NETWORK
-                // ═══════════════════════════════════════════════════
-
-                ColumnLayout {
-                    visible:
-                        root.wifiView === 2
-
-                    Layout.fillWidth: true
-
-                    spacing: 8
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Rectangle {
-                            width: 28
-                            height: 28
-
-                            color:
-                                addBackArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                            Text {
-                                anchors.centerIn: parent
-
-                                text: "󰁍"
-
-                                color:
-                                    ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 16
-                            }
-
-                            MouseArea {
-                                id: addBackArea
-
-                                anchors.fill: parent
-
-                                hoverEnabled: true
-
-                                cursorShape:
-                                    Qt.PointingHandCursor
-
-                                onClicked:
-                                    root.wifiView = 0
-                            }
-                        }
-
-                        Text {
-                            text: "Add Network"
-
-                            color:
-                                ThemeManager.text
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontSmall + 1
-
-                            font.weight:
-                                ThemeManager.fontBold
-
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    TextField {
-                        id: addNetworkSsidField
-
-                        Layout.fillWidth: true
-
-                        Layout.preferredHeight:
-                            root.networkRowHeight
-
-                        placeholderText:
-                            "Network name"
-
-                        placeholderTextColor:
-                            ThemeManager.textMuted
-
-                        text:
-                            root.addNetworkName
-
-                        onTextChanged:
-                            root.addNetworkName = text
-
-                        color:
-                            ThemeManager.text
-
-                        selectionColor:
-                            ThemeManager.accent
-
-                        selectedTextColor:
-                            ThemeManager.background
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontTiny + 1
-
-                        leftPadding: 10
-                        rightPadding: 10
-
-                        background: Rectangle {
-                            color:
-                                ThemeManager.surface
-
-                            border.width: 1
-
-                            border.color:
-                                addNetworkSsidField.activeFocus
-                                    ? ThemeManager.accent
-                                    : ThemeManager.surfaceSecondary
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-
-                        Layout.preferredHeight:
-                            root.networkRowHeight
-
-                        color:
-                            openNetworkArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
-
-                        border.width: 1
-
-                        border.color:
-                            ThemeManager.surfaceSecondary
-
-                        RowLayout {
-                            anchors.fill: parent
-
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-
-                            Text {
-                                text: "󰖪"
-
-                                color:
-                                    root.addNetworkOpen
-                                        ? ThemeManager.accent
-                                        : ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 18
-                            }
-
-                            Text {
-                                text: "Open network"
-
-                                color:
-                                    ThemeManager.text
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize:
-                                    ThemeManager.fontTiny + 1
-
-                                Layout.fillWidth: true
-                            }
-
-                            Rectangle {
-                                width: 38
-                                height: 22
-
-                                color:
-                                    root.addNetworkOpen
-                                        ? ThemeManager.accent
-                                        : ThemeManager.surfaceSecondary
-
-                                border.width: 1
-
-                                border.color:
-                                    root.addNetworkOpen
-                                        ? ThemeManager.accent
-                                        : ThemeManager.overlay
-
-                                Rectangle {
-                                    width: 16
-                                    height: 16
-
-                                    anchors.verticalCenter:
-                                        parent.verticalCenter
-
-                                    x:
-                                        root.addNetworkOpen
-                                            ? parent.width - width - 3
-                                            : 3
-
-                                    color:
-                                        root.addNetworkOpen
-                                            ? ThemeManager.background
-                                            : ThemeManager.textMuted
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: openNetworkArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked:
-                                root.addNetworkOpen =
-                                    !root.addNetworkOpen
-                        }
-                    }
-
-                    TextField {
-                        id: addNetworkPasswordField
-
-                        visible:
-                            !root.addNetworkOpen
-
-                        Layout.fillWidth: true
-
-                        Layout.preferredHeight:
-                            root.networkRowHeight
-
-                        placeholderText:
-                            "Password"
-
-                        placeholderTextColor:
-                            ThemeManager.textMuted
-
-                        echoMode:
-                            TextInput.Password
-
-                        text:
-                            root.addNetworkPassword
-
-                        onTextChanged:
-                            root.addNetworkPassword =
-                                text
-
-                        color:
-                            ThemeManager.text
-
-                        selectionColor:
-                            ThemeManager.accent
-
-                        selectedTextColor:
-                            ThemeManager.background
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontTiny + 1
-
-                        leftPadding: 10
-                        rightPadding: 10
-
-                        background: Rectangle {
-                            color:
-                                ThemeManager.surface
-
-                            border.width: 1
-
-                            border.color:
-                                addNetworkPasswordField.activeFocus
-                                    ? ThemeManager.accent
-                                    : ThemeManager.surfaceSecondary
-                        }
-
-                        Keys.onReturnPressed:
-                            root.addNetwork()
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-
-                        Layout.preferredHeight:
-                            root.actionHeight
-
-                        color:
-                            addNetworkButtonArea.containsMouse
-                                ? ThemeManager.accentDim
-                                : ThemeManager.accent
-
-                        Text {
-                            anchors.centerIn: parent
-
-                            text: "Add Network"
-
-                            color:
-                                ThemeManager.background
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontTiny + 1
-
-                            font.weight:
-                                ThemeManager.fontBold
-                        }
-
-                        MouseArea {
-                            id: addNetworkButtonArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked:
-                                root.addNetwork()
-                        }
-                    }
                 }
             }
         }
 
         // ═══════════════════════════════════════════════════════════
-        // BLUETOOTH EXPANDED
-        // ═══════════════════════════════════════════════════════════
-
-        Rectangle {
-            visible:
-                root.bluetoothExpanded
-
-            Layout.fillWidth: true
-
-            implicitHeight:
-                bluetoothColumn.implicitHeight + 20
-
-            radius: 0
-
-            color:
-                ThemeManager.backgroundSecondary
-
-            border.width: 1
-
-            border.color:
-                ThemeManager.surfaceSecondary
-
-            ColumnLayout {
-                id: bluetoothColumn
-
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                }
-
-                anchors.margins: 10
-
-                spacing: 6
-
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Text {
-                        text: "Bluetooth Devices"
-
-                        color:
-                            ThemeManager.text
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontSmall + 1
-
-                        font.weight:
-                            ThemeManager.fontBold
-
-                        Layout.fillWidth: true
-                    }
-
-                    Rectangle {
-                        width: 28
-                        height: 28
-
-                        color:
-                            bluetoothRefreshArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : ThemeManager.surface
-
-                        Text {
-                            anchors.centerIn: parent
-
-                            text: "󰑐"
-
-                            color:
-                                root.bluetoothAdapter &&
-                                root.bluetoothAdapter.discovering
-                                    ? ThemeManager.accent
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize: 16
-                        }
-
-                        MouseArea {
-                            id: bluetoothRefreshArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked: {
-                                if (root.bluetoothAdapter)
-                                    root.bluetoothAdapter.discovering =
-                                        !root.bluetoothAdapter.discovering
-                            }
-                        }
-                    }
-                }
-
-                Text {
-                    visible:
-                        !root.bluetoothAdapter ||
-                        !root.bluetoothAdapter.enabled
-
-                    text:
-                        "Bluetooth is disabled."
-
-                    color:
-                        ThemeManager.textMuted
-
-                    font.family:
-                        ThemeManager.fontFamily
-
-                    font.pixelSize:
-                        ThemeManager.fontTiny + 1
-                }
-
-                Repeater {
-                    model:
-                        root.bluetoothAdapter
-                            ? root.bluetoothAdapter.devices
-                            : null
-
-                    delegate: Rectangle {
-                        required property var modelData
-
-                        Layout.fillWidth: true
-
-                        Layout.preferredHeight:
-                            root.networkRowHeight + 6
-
-                        color:
-                            bluetoothDeviceArea.containsMouse
-                                ? ThemeManager.surfaceSecondary
-                                : modelData.connected
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                        border.width: 1
-
-                        border.color:
-                            modelData.connected
-                                ? ThemeManager.accent
-                                : ThemeManager.surfaceSecondary
-
-                        RowLayout {
-                            anchors.fill: parent
-
-                            anchors.leftMargin: 9
-                            anchors.rightMargin: 7
-
-                            spacing: 8
-
-                            Text {
-                                text: "󰂯"
-
-                                color:
-                                    modelData.connected
-                                        ? ThemeManager.info
-                                        : ThemeManager.textMuted
-
-                                font.family:
-                                    ThemeManager.fontFamily
-
-                                font.pixelSize: 19
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-
-                                spacing: 1
-
-                                Text {
-                                    text:
-                                        modelData.name ||
-                                        modelData.deviceName ||
-                                        "Unknown device"
-
-                                    color:
-                                        ThemeManager.text
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-
-                                    Layout.fillWidth: true
-
-                                    elide:
-                                        Text.ElideRight
-                                }
-
-                                Text {
-                                    text: {
-                                        if (modelData.pairing)
-                                            return "Pairing…"
-
-                                        if (modelData.connected)
-                                            return "Connected"
-
-                                        if (modelData.paired)
-                                            return "Saved"
-
-                                        return "Available"
-                                    }
-
-                                    color:
-                                        modelData.connected
-                                            ? ThemeManager.success
-                                            : ThemeManager.textMuted
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-                                }
-                            }
-
-                            Rectangle {
-                                visible:
-                                    !modelData.paired &&
-                                    !modelData.pairing
-
-                                width: 64
-
-                                height:
-                                    root.actionHeight
-
-                                color:
-                                    bluetoothPairArea.containsMouse
-                                        ? ThemeManager.accentDim
-                                        : ThemeManager.accent
-
-                                Text {
-                                    anchors.centerIn: parent
-
-                                    text: "Pair"
-
-                                    color:
-                                        ThemeManager.background
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-
-                                    font.weight:
-                                        ThemeManager.fontBold
-                                }
-
-                                MouseArea {
-                                    id: bluetoothPairArea
-
-                                    anchors.fill: parent
-
-                                    hoverEnabled: true
-
-                                    cursorShape:
-                                        Qt.PointingHandCursor
-
-                                    onClicked:
-                                        modelData.pair()
-                                }
-                            }
-
-                            Rectangle {
-                                visible:
-                                    modelData.paired &&
-                                    !modelData.connected
-
-                                width: 64
-
-                                height:
-                                    root.actionHeight
-
-                                color:
-                                    bluetoothConnectArea.containsMouse
-                                        ? ThemeManager.accentDim
-                                        : ThemeManager.accent
-
-                                Text {
-                                    anchors.centerIn: parent
-
-                                    text: "Connect"
-
-                                    color:
-                                        ThemeManager.background
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-
-                                    font.weight:
-                                        ThemeManager.fontBold
-                                }
-
-                                MouseArea {
-                                    id: bluetoothConnectArea
-
-                                    anchors.fill: parent
-
-                                    hoverEnabled: true
-
-                                    cursorShape:
-                                        Qt.PointingHandCursor
-
-                                    onClicked:
-                                        modelData.connect()
-                                }
-                            }
-
-                            Rectangle {
-                                visible:
-                                    modelData.connected
-
-                                width: 82
-
-                                height:
-                                    root.actionHeight
-
-                                color:
-                                    bluetoothDisconnectArea.containsMouse
-                                        ? ThemeManager.surface
-                                        : ThemeManager.backgroundSecondary
-
-                                Text {
-                                    anchors.centerIn: parent
-
-                                    text: "Disconnect"
-
-                                    color:
-                                        ThemeManager.textMuted
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize:
-                                        ThemeManager.fontTiny + 1
-                                }
-
-                                MouseArea {
-                                    id: bluetoothDisconnectArea
-
-                                    anchors.fill: parent
-
-                                    hoverEnabled: true
-
-                                    cursorShape:
-                                        Qt.PointingHandCursor
-
-                                    onClicked:
-                                        modelData.disconnect()
-                                }
-                            }
-
-                            Rectangle {
-                                visible:
-                                    modelData.paired
-
-                                width: 27
-
-                                height:
-                                    root.actionHeight
-
-                                color:
-                                    bluetoothForgetArea.containsMouse
-                                        ? ThemeManager.danger
-                                        : ThemeManager.backgroundSecondary
-
-                                Text {
-                                    anchors.centerIn: parent
-
-                                    text: "×"
-
-                                    color:
-                                    bluetoothForgetArea.containsMouse
-                                        ? ThemeManager.backgroundSecondary
-                                        : ThemeManager.danger
-
-                                    font.family:
-                                        ThemeManager.fontFamily
-
-                                    font.pixelSize: 16
-                                }
-
-                                MouseArea {
-                                    id: bluetoothForgetArea
-
-                                    anchors.fill: parent
-
-                                    hoverEnabled: true
-
-                                    cursorShape:
-                                        Qt.PointingHandCursor
-
-                                    onClicked:
-                                        modelData.forget()
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: bluetoothDeviceArea
-
-                            anchors.fill: parent
-
-                            z: -1
-
-                            hoverEnabled: true
-                        }
-                    }
-                }
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // AIRPLANE + POWER PROFILES
+        // AIRPLANE + NIGHT MODE
         // ═══════════════════════════════════════════════════════════
 
         RowLayout {
@@ -2629,277 +2919,86 @@ PanelWindow {
 
             spacing: 8
 
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
             // AIRPLANE MODE
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
 
-            Rectangle {
-                Layout.fillWidth: true
+            ToggleTile {
+                icon: "󰀝"
 
-                Layout.preferredHeight:
-                    root.tileHeight
+                label: "Airplane Mode"
 
-                color:
-                    root.airplaneMode
-                        ? ThemeManager.accent
-                        : airplaneArea.containsMouse
-                            ? ThemeManager.surfaceSecondary
-                            : ThemeManager.surface
+                checked: root.airplaneMode
 
-                border.width: 1
-
-                border.color:
-                    root.airplaneMode
-                        ? ThemeManager.accent
-                        : ThemeManager.surfaceSecondary
-
-                RowLayout {
-                    anchors.fill: parent
-
-                    anchors.margins: 11
-
-                    spacing: 8
-
-                    Text {
-                        text: "󰀝"
-
-                        color:
-                            root.airplaneMode
-                                ? ThemeManager.background
-                                : ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize: 20
-                    }
-
-                    Text {
-                        text: "Airplane Mode"
-
-                        color:
-                            root.airplaneMode
-                                ? ThemeManager.background
-                                : ThemeManager.text
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize:
-                            ThemeManager.fontTiny + 1
-
-                        font.weight:
-                            root.airplaneMode
-                                ? ThemeManager.fontBold
-                                : Font.Normal
-
-                        Layout.fillWidth: true
-                    }
-                }
-
-                MouseArea {
-                    id: airplaneArea
-
-                    anchors.fill: parent
-
-                    hoverEnabled: true
-
-                    cursorShape:
-                        Qt.PointingHandCursor
-
-                    onClicked:
-                        root.toggleAirplane()
-                }
+                activate:
+                    () => root.toggleAirplane()
             }
 
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
+            // NIGHT MODE (hyprsunset)
+            // ───────────────────────────────────────────────────────
+
+            ToggleTile {
+                icon: "󰖔"
+
+                label: "Night Mode"
+
+                checked: root.nightMode
+
+                activeColor:
+                    ThemeManager.warning
+
+                activate:
+                    () => root.toggleNightMode()
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // POWER PROFILES + IDLE INHIBIT
+        // ═══════════════════════════════════════════════════════════
+
+        RowLayout {
+            Layout.fillWidth: true
+
+            spacing: 8
+
+            // ───────────────────────────────────────────────────────
             // POWER PROFILES
-            // ═══════════════════════════════════════════════════════
+            // ───────────────────────────────────────────────────────
 
-            Rectangle {
-                Layout.fillWidth: true
+            ToggleTile {
+                icon:
+                    root.powerProfileIcon(
+                        PowerProfiles.profile
+                    )
 
-                Layout.preferredHeight:
-                    root.tileHeight
+                label:
+                    root.powerProfileName(
+                        PowerProfiles.profile
+                    )
 
-                color:
-                    ThemeManager.surface
+                iconColorUnchecked:
+                    root.powerProfileColor(
+                        PowerProfiles.profile
+                    )
 
-                border.width: 1
+                activate:
+                    () => root.cyclePowerProfile()
+            }
 
-                border.color:
-                    ThemeManager.surfaceSecondary
+            // ───────────────────────────────────────────────────────
+            // IDLE INHIBIT (hypridle)
+            // ───────────────────────────────────────────────────────
 
-                RowLayout {
-                    anchors.fill: parent
+            ToggleTile {
+                icon: "󰅶"
 
-                    spacing: 0
+                label: "Idle Inhibit"
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                checked: root.idleInhibited
 
-                        color:
-                            PowerProfiles.profile ===
-                            PowerProfile.PowerSaver
-                                ? ThemeManager.success
-                                : stealthArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                        Text {
-                            anchors.centerIn: parent
-
-                            text: "Stealth"
-
-                            color:
-                                PowerProfiles.profile ===
-                                PowerProfile.PowerSaver
-                                    ? ThemeManager.background
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontTiny + 1
-
-                            font.weight:
-                                PowerProfiles.profile ===
-                                PowerProfile.PowerSaver
-                                    ? ThemeManager.fontBold
-                                    : Font.Normal
-                        }
-
-                        MouseArea {
-                            id: stealthArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked: {
-                                PowerProfiles.profile =
-                                    PowerProfile.PowerSaver
-
-                                keyboardFocus.forceActiveFocus()
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        color:
-                            PowerProfiles.profile ===
-                            PowerProfile.Balanced
-                                ? ThemeManager.accent
-                                : steadyArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                        Text {
-                            anchors.centerIn: parent
-
-                            text: "Steady"
-
-                            color:
-                                PowerProfiles.profile ===
-                                PowerProfile.Balanced
-                                    ? ThemeManager.background
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontTiny + 1
-
-                            font.weight:
-                                PowerProfiles.profile ===
-                                PowerProfile.Balanced
-                                    ? ThemeManager.fontBold
-                                    : Font.Normal
-                        }
-
-                        MouseArea {
-                            id: steadyArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked: {
-                                PowerProfiles.profile =
-                                    PowerProfile.Balanced
-
-                                keyboardFocus.forceActiveFocus()
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        color:
-                            PowerProfiles.profile ===
-                            PowerProfile.Performance
-                                ? ThemeManager.danger
-                                : strideArea.containsMouse
-                                    ? ThemeManager.surfaceSecondary
-                                    : ThemeManager.surface
-
-                        Text {
-                            anchors.centerIn: parent
-
-                            text: "Stride"
-
-                            color:
-                                PowerProfiles.profile ===
-                                PowerProfile.Performance
-                                    ? ThemeManager.background
-                                    : ThemeManager.textMuted
-
-                            font.family:
-                                ThemeManager.fontFamily
-
-                            font.pixelSize:
-                                ThemeManager.fontTiny + 1
-
-                            font.weight:
-                                PowerProfiles.profile ===
-                                PowerProfile.Performance
-                                    ? ThemeManager.fontBold
-                                    : Font.Normal
-                        }
-
-                        MouseArea {
-                            id: strideArea
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onClicked: {
-                                PowerProfiles.profile =
-                                    PowerProfile.Performance
-
-                                keyboardFocus.forceActiveFocus()
-                            }
-                        }
-                    }
-                }
+                activate:
+                    () => root.toggleIdleInhibit()
             }
         }
 
@@ -2907,159 +3006,46 @@ PanelWindow {
         // VOLUME
         // ═══════════════════════════════════════════════════════════
 
-        Rectangle {
-            Layout.fillWidth: true
+        SliderRow {
+            icon: root.volumeIcon()
 
-            Layout.preferredHeight:
-                root.tileHeight
+            iconColor:
+                root.audioSink &&
+                root.audioSink.audio &&
+                !root.audioSink.audio.muted
+                    ? ThemeManager.accent
+                    : ThemeManager.textMuted
 
-            radius: 0
+            iconClickable: true
 
-            color:
-                ThemeManager.surface
-
-            border.width: 1
-
-            border.color:
-                ThemeManager.surfaceSecondary
-
-            RowLayout {
-                anchors.fill: parent
-
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-
-                spacing: 10
-
-                MouseArea {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-
-                    hoverEnabled: true
-
-                    cursorShape:
-                        Qt.PointingHandCursor
-
-                    onClicked: {
-                        if (
-                            root.audioSink &&
-                            root.audioSink.audio
-                        ) {
-                            root.audioSink.audio.muted =
-                                !root.audioSink.audio.muted
-                        }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-
-                        text:
-                            root.volumeIcon()
-
-                        color:
-                            root.audioSink &&
-                            root.audioSink.audio &&
-                            !root.audioSink.audio.muted
-                                ? ThemeManager.accent
-                                : ThemeManager.textMuted
-
-                        font.family:
-                            ThemeManager.fontFamily
-
-                        font.pixelSize: 21
-                    }
+            onIconClicked: () => {
+                if (
+                    root.audioSink &&
+                    root.audioSink.audio
+                ) {
+                    root.audioSink.audio.muted =
+                        !root.audioSink.audio.muted
                 }
+            }
 
-                Slider {
-                    id: volumeSlider
+            fillColor:
+                ThemeManager.accent
 
-                    Layout.fillWidth: true
+            from: 0
+            to: 1
 
-                    Layout.preferredHeight: 26
+            value:
+                root.audioSink &&
+                root.audioSink.audio
+                    ? root.audioSink.audio.volume
+                    : 0
 
-                    from: 0
-                    to: 1
-
-                    value:
-                        root.audioSink &&
-                        root.audioSink.audio
-                            ? root.audioSink.audio.volume
-                            : 0
-
-                    onMoved: {
-                        if (
-                            root.audioSink &&
-                            root.audioSink.audio
-                        ) {
-                            root.audioSink.audio.volume =
-                                value
-                        }
-                    }
-
-                    background: Rectangle {
-                        x:
-                            volumeSlider.leftPadding
-
-                        y:
-                            volumeSlider.topPadding +
-                            volumeSlider.availableHeight / 2 -
-                            height / 2
-
-                        implicitWidth: 200
-                        implicitHeight: 4
-
-                        width:
-                            volumeSlider.availableWidth
-
-                        height:
-                            implicitHeight
-
-                        radius: 0
-
-                        color:
-                            ThemeManager.surfaceSecondary
-
-                        Rectangle {
-                            width:
-                                volumeSlider.visualPosition *
-                                parent.width
-
-                            height:
-                                parent.height
-
-                            color:
-                                ThemeManager.accent
-                        }
-                    }
-
-                    handle: Rectangle {
-                        x:
-                            volumeSlider.leftPadding +
-                            volumeSlider.visualPosition *
-                            (
-                                volumeSlider.availableWidth -
-                                width
-                            )
-
-                        y:
-                            volumeSlider.topPadding +
-                            volumeSlider.availableHeight / 2 -
-                            height / 2
-
-                        implicitWidth: 14
-                        implicitHeight: 14
-
-                        width:
-                            implicitWidth
-
-                        height:
-                            implicitHeight
-
-                        radius: 7
-
-                        color:
-                            ThemeManager.accent
-                    }
+            onMoved: (v) => {
+                if (
+                    root.audioSink &&
+                    root.audioSink.audio
+                ) {
+                    root.audioSink.audio.volume = v
                 }
             }
         }
@@ -3068,141 +3054,64 @@ PanelWindow {
         // BRIGHTNESS
         // ═══════════════════════════════════════════════════════════
 
-        Rectangle {
-            Layout.fillWidth: true
+        SliderRow {
+            icon: root.brightnessIcon()
 
-            Layout.preferredHeight:
-                root.tileHeight
+            iconColor:
+                ThemeManager.warning
 
-            radius: 0
+            fillColor:
+                ThemeManager.warning
 
-            color:
-                ThemeManager.surface
+            from: 1
+            to: 100
 
-            border.width: 1
+            value: root.brightness
 
-            border.color:
-                ThemeManager.surfaceSecondary
+            onMoved: (v) => {
+                root.brightness = Math.round(v)
 
-            RowLayout {
-                anchors.fill: parent
+                brightnessWrite.command = [
+                    "brightnessctl",
+                    "set",
+                    root.brightness + "%"
+                ]
 
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-
-                spacing: 10
-
-                Text {
-                    text:
-                        root.brightnessIcon()
-
-                    color:
-                        ThemeManager.warning
-
-                    font.family:
-                        ThemeManager.fontFamily
-
-                    font.pixelSize: 21
-
-                    Layout.preferredWidth: 26
-
-                    horizontalAlignment:
-                        Text.AlignHCenter
-                }
-
-                Slider {
-                    id: brightnessSlider
-
-                    Layout.fillWidth: true
-
-                    Layout.preferredHeight: 26
-
-                    from: 1
-                    to: 100
-
-                    value:
-                        root.brightness
-
-                    onMoved: {
-                        root.brightness =
-                            Math.round(value)
-
-                        brightnessWrite.command = [
-                            "brightnessctl",
-                            "set",
-                            root.brightness + "%"
-                        ]
-
-                        brightnessWrite.running =
-                            true
-                    }
-
-                    background: Rectangle {
-                        x:
-                            brightnessSlider.leftPadding
-
-                        y:
-                            brightnessSlider.topPadding +
-                            brightnessSlider.availableHeight / 2 -
-                            height / 2
-
-                        implicitWidth: 200
-                        implicitHeight: 4
-
-                        width:
-                            brightnessSlider.availableWidth
-
-                        height:
-                            implicitHeight
-
-                        radius: 0
-
-                        color:
-                            ThemeManager.surfaceSecondary
-
-                        Rectangle {
-                            width:
-                                brightnessSlider.visualPosition *
-                                parent.width
-
-                            height:
-                                parent.height
-
-                            color:
-                                ThemeManager.accent
-                        }
-                    }
-
-                    handle: Rectangle {
-                        x:
-                            brightnessSlider.leftPadding +
-                            brightnessSlider.visualPosition *
-                            (
-                                brightnessSlider.availableWidth -
-                                width
-                            )
-
-                        y:
-                            brightnessSlider.topPadding +
-                            brightnessSlider.availableHeight / 2 -
-                            height / 2
-
-                        implicitWidth: 14
-                        implicitHeight: 14
-
-                        width:
-                            implicitWidth
-
-                        height:
-                            implicitHeight
-
-                        radius: 7
-
-                        color:
-                            ThemeManager.accent
-                    }
-                }
+                brightnessWrite.running = true
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // WARMNESS (night mode)
+        // ═══════════════════════════════════════════════════════════
+
+        SliderRow {
+            icon: "󰔏"
+
+            iconColor:
+                ThemeManager.warning
+
+            fillColor:
+                ThemeManager.warning
+
+            // NOTE: from/to are reversed on purpose so dragging right
+            // moves toward warmer (lower Kelvin) — matches the visual
+            // direction most people expect for a "warmth" slider.
+            from: 6500
+            to: 1000
+            stepSize: 100
+
+            // While pressed, follow the live drag position instead of
+            // the bound value — otherwise the 100K-rounded write-back
+            // in setNightTemperature() fights the drag every frame.
+            liveWhilePressed: true
+
+            value: root.nightTemperature
+
+            onMoved: (v) =>
+                root.setNightTemperature(v)
+
+            visible: root.nightMode
         }
     }
 
@@ -3213,7 +3122,7 @@ PanelWindow {
     Rectangle {
         id: passwordDialog
 
-        anchors.centerIn: parent
+        anchors.centerIn: mainColumn
 
         width: 340
         height: 180
