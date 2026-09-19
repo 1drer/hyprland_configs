@@ -1,2 +1,3 @@
 singleton ControlCenterState 1.0 ControlCenterState.qml
+singleton PowerMenuState 1.0 PowerMenuState.qml
 TrayMenu 1.0 TrayMenu.qml

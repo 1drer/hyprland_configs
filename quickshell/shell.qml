@@ -33,6 +33,18 @@ ShellRoot {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // Power Menu
+    // ═══════════════════════════════════════════════════════════════════
+
+    Loader {
+        active: PowerMenuState.visible
+
+        sourceComponent: Component {
+          PowerMenu {}
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // Wallpaper Picker
     // ═══════════════════════════════════════════════════════════════════
 
@@ -59,6 +71,10 @@ ShellRoot {
 
         ThemeSwitcher {}
     }
+    
+    //NirtroControl 
+    
+  //  NitroControl{}
 
     // ═══════════════════════════════════════════════════════════════════
     // Wallpaper IPC
@@ -98,6 +114,26 @@ ShellRoot {
 
         function next(): void {
             ThemeManager.nextTheme()
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Power Menu IPC
+    // ═══════════════════════════════════════════════════════════════════
+
+    IpcHandler {
+        target: "power"
+
+        function open(): void {
+            PowerMenuState.open()
+        }
+
+        function toggle(): void {
+            PowerMenuState.toggle()
+        }
+
+        function close(): void {
+            PowerMenuState.close()
         }
     }
 }

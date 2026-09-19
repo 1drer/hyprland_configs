@@ -18,7 +18,7 @@ hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"))
 hl.bind(mod .. " + F", hl.dsp.window.fullscreen())
-hl.bind(mod .. " + L", hl.dsp.exec_cmd("~/.local/bin/hyprlock-awww"))
+hl.bind(mod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 
 -- Screenshot
 local ts = "Screenshot-$(date +%Y-%m-%d_%H%M%S).png"
@@ -50,8 +50,8 @@ hl.bind(mod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" }))
 hl.bind(mod .. " + SHIFT + up", hl.dsp.window.move({ direction = "up" }))
 hl.bind(mod .. " + SHIFT + down", hl.dsp.window.move({ direction = "down" }))
 
--- rofi power menu (Lock / Logout / Suspend / Hibernate / Reboot / Shutdown)
-hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd("~/.config/rofi/scripts/power-menu.sh"))
+-- quickshell power menu (Lock / Suspend / Logout / Restart / Shutdown)
+hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd("qs ipc call power toggle"))
 
 -- wallpaper menu
 hl.bind(mod .. " + SHIFT + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
