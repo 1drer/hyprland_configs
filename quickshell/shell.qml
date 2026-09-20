@@ -46,10 +46,14 @@ ShellRoot {
 
     // Action executor — long-lived, so it survives the menu window
     // being destroyed on close. The menu schedules a command through
-    // PowerMenuState; we run it after a short delay so the screen
-    // doesn't lock/power down with the menu still animated on top.
+    // PowerMenuState; we run it after a fixed grace period so the
+    // screen doesn't lock/power down with the menu still mapped.
     Timer {
         id: powerActionTimer
+
+        // Fixed 150ms grace: lets the menu's layer surface unmap
+        // before hyprlock/systemctl takes over the screen.
+        interval: 150
 
         repeat: false
 
@@ -71,8 +75,7 @@ ShellRoot {
     Connections {
         target: PowerMenuState
 
-        function onActionScheduled(delay) {
-            powerActionTimer.interval = Math.round(delay)
+        function onActionScheduled() {
             powerActionTimer.restart()
         }
     }

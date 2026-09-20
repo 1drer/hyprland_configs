@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import "./theme"
 import "./services"
@@ -38,38 +37,32 @@ PanelWindow {
             icon: "󰐥",
             label: "Shutdown",
             colorKey: "danger",
-            delay: 300,
             command: [ "systemctl", "poweroff" ]
         },
         {
             icon: "󰑓",
             label: "Restart",
             colorKey: "warning",
-            delay: 300,
             command: [ "systemctl", "reboot" ]
         },
         {
             icon: "󰍃",
             label: "Log Out",
             colorKey: "accent",
-            delay: 200,
-            // This fork has no classic "exit" dispatcher — hyprctl dispatch
-            // evaluates Lua DSL, i.e. Hyprland's own exit is hl.dsp.exit()
-            // (same call hyprshutdown uses on the lua provider).
+            // No classic "exit" dispatcher on this fork — hyprctl dispatch
+            // evaluates Lua DSL (hl.dsp.exit()).
             command: [ "hyprctl", "dispatch", "hl.dsp.exit()" ]
         },
         {
             icon: "󰒲",
             label: "Suspend",
             colorKey: "info",
-            delay: 300,
             command: [ "systemctl", "suspend" ]
         },
         {
             icon: "󰌾",
             label: "Lock",
             colorKey: "success",
-            delay: 150,
             command: [ "hyprlock" ]
         }
     ]
@@ -153,65 +146,61 @@ PanelWindow {
         border.color:
             ThemeManager.accent
 
-        Column {
-            id: menuLayout
+        // ── Actions ───────────────────────────────────────────────
 
+        Row {
             anchors.centerIn: parent
 
-            // ── Actions ───────────────────────────────────────────
+            spacing: root.cellSpacing
 
-            Row {
-                spacing: root.cellSpacing
+            Repeater {
+                model: root.actions
 
-                Repeater {
-                    model: root.actions
+                delegate: Rectangle {
+                    required property int index
+                    required property var modelData
 
-                    delegate: Rectangle {
-                        required property int index
-                        required property var modelData
+                    width: root.cellSize
+                    height: root.cellSize
 
-                        width: root.cellSize
-                        height: root.cellSize
+                    color:
+                        root.selectedIndex === index
+                            ? ThemeManager[modelData.colorKey]
+                            : root.tinted(
+                                ThemeManager[modelData.colorKey], 0.18)
+
+                    Text {
+                        text: modelData.icon
+
+                        anchors.centerIn: parent
 
                         color:
                             root.selectedIndex === index
-                                ? ThemeManager[modelData.colorKey]
-                                : root.tinted(
-                                    ThemeManager[modelData.colorKey], 0.18)
+                                ? ThemeManager.background
+                                : ThemeManager[modelData.colorKey]
 
-                        Text {
-                            text: modelData.icon
+                        font.family:
+                            ThemeManager.fontFamily
 
-                            anchors.centerIn: parent
+                        font.pixelSize: 44
+                    }
 
-                            color:
-                                root.selectedIndex === index
-                                    ? ThemeManager.background
-                                    : ThemeManager[modelData.colorKey]
+                    MouseArea {
+                        anchors.fill: parent
 
-                            font.family:
-                                ThemeManager.fontFamily
+                        hoverEnabled: true
 
-                            font.pixelSize: 44
-                        }
+                        cursorShape:
+                            Qt.PointingHandCursor
 
-                        MouseArea {
-                            anchors.fill: parent
+                        onEntered:
+                            root.selectedIndex = index
 
-                            hoverEnabled: true
+                        onPositionChanged:
+                            root.selectedIndex = index
 
-                            cursorShape:
-                                Qt.PointingHandCursor
-
-                            onEntered:
-                                root.selectedIndex = index
-
-                            onPositionChanged:
-                                root.selectedIndex = index
-
-                            onClicked:
-                                root.runAction(index)
-                        }
+                        onClicked:
+                            root.runAction(index)
                     }
                 }
             }
@@ -232,12 +221,9 @@ PanelWindow {
 
         PowerMenuState.close()
 
-        // Give the menu time to actually disappear before the screen
-        // locks or powers down — otherwise the panel lingers on screen
-        // during the lock/suspend animation. The command runs from the
-        // shell (see shell.qml's action executor); this window is
-        // destroyed on close and cannot own the process.
-        PowerMenuState.schedule(action.command, action.delay)
+        // The shell runs the command (this window is destroyed on close
+        // and cannot own the process), after a fixed grace period.
+        PowerMenuState.schedule(action.command)
     }
 
     // ── Keyboard (escape / arrows / enter) ────────────────────────

@@ -17,9 +17,9 @@ QtObject {
     // Command (argv list) waiting to be spawned by the shell's executor.
     property var pendingCommand: null
 
-    // Emitted when a delayed action is requested. The shell listens and
-    // restarts its action timer.
-    signal actionScheduled(real delay)
+    // Emitted when an action is requested. The shell listens and spawns
+    // it after a short grace period.
+    signal actionScheduled()
 
     function toggle() {
         visible = !visible
@@ -33,10 +33,11 @@ QtObject {
         visible = true
     }
 
-    // Store a command to run after `delay` ms. Execution happens in the
-    // shell (long-lived), not in the menu window (destroyed on close).
-    function schedule(command, delay) {
+    // Queue a command to run. Execution happens in the shell
+    // (long-lived), not in the menu window (destroyed on close).
+    function schedule(command) {
         root.pendingCommand = command
-        root.actionScheduled(delay)
+        root.actionScheduled()
     }
 }
+
