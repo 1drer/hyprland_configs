@@ -1,2 +1,22 @@
-~/Projects/hyprland-configs/quickshell/theme/__pycache__/
-~/Projects/hyprland-configs/quickshell/theme/__pycache__/
+# Backups
+*.bak
+*~
+*.orig
+*.rej
+
+# Editor / OS junk
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Unused leftovers
+quickshell/services/NitroControl.qml
