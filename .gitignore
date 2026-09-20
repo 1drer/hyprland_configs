@@ -18,5 +18,8 @@ __pycache__/
 .venv/
 venv/
 
+# Runtime state
+quickshell/theme/palettes/current
+
 # Unused leftovers
 quickshell/services/NitroControl.qml
