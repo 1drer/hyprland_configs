@@ -6,7 +6,7 @@ import QtQuick
 // control it from anywhere.
 //
 // Also relays scheduled actions from the (short-lived, Loader-owned)
-// menu window to the shell's long-lived Timer/Process: the menu is
+// menu window to the shell's long-lived Process: the menu is
 // destroyed on close, so it cannot own the process that must run the
 // shutdown/lock command after it disappears.
 QtObject {
@@ -18,7 +18,7 @@ QtObject {
     property var pendingCommand: null
 
     // Emitted when an action is requested. The shell listens and spawns
-    // it after a short grace period.
+    // it immediately.
     signal actionScheduled()
 
     function toggle() {

@@ -54,7 +54,7 @@ PanelWindow {
             command: [ "hyprctl", "dispatch", "hl.dsp.exit()" ]
         },
         {
-            icon: "󰒲",
+            icon: "󰤄",
             label: "Suspend",
             colorKey: "info",
             command: [ "systemctl", "suspend" ]
@@ -222,7 +222,7 @@ PanelWindow {
         PowerMenuState.close()
 
         // The shell runs the command (this window is destroyed on close
-        // and cannot own the process), after a fixed grace period.
+        // and cannot own the process).
         PowerMenuState.schedule(action.command)
     }
 

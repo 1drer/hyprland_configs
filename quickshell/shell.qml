@@ -46,28 +46,9 @@ ShellRoot {
 
     // Action executor — long-lived, so it survives the menu window
     // being destroyed on close. The menu schedules a command through
-    // PowerMenuState; we run it after a fixed grace period so the
-    // screen doesn't lock/power down with the menu still mapped.
-    Timer {
-        id: powerActionTimer
-
-        // Fixed 150ms grace: lets the menu's layer surface unmap
-        // before hyprlock/systemctl takes over the screen.
-        interval: 150
-
-        repeat: false
-
-        onTriggered: {
-            const command = PowerMenuState.pendingCommand
-
-            if (command !== null) {
-                powerActionProcess.command = command
-                powerActionProcess.running = true
-                PowerMenuState.pendingCommand = null
-            }
-        }
-    }
-
+    // PowerMenuState and we spawn it immediately; the child process
+    // starts slowly enough that the menu surface is already gone by the
+    // time hyprlock/systemctl takes over the screen.
     Process {
         id: powerActionProcess
     }
@@ -76,7 +57,13 @@ ShellRoot {
         target: PowerMenuState
 
         function onActionScheduled() {
-            powerActionTimer.restart()
+            const command = PowerMenuState.pendingCommand
+
+            if (command !== null) {
+                powerActionProcess.command = command
+                powerActionProcess.running = true
+                PowerMenuState.pendingCommand = null
+            }
         }
     }
 
